@@ -1,0 +1,6 @@
+{
+  "name": "ABOGO - Portal Absensi SD BOPKRI Gondolayu",
+  "description": "Portal absensi online berbasis geolokasi dan verifikasi wajah untuk Kepala Sekolah, Guru, dan Staff SD BOPKRI Gondolayu Yogyakarta.",
+  "requestFramePermissions": ["camera", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

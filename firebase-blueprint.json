@@ -1,0 +1,394 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profil pengguna mencakup Kepala Sekolah, Guru, dan Staff SD BOPKRI Gondolayu",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User ID unik pengguna"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Alamat email pengguna"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Nama lengkap dengan gelar"
+        },
+        "nip": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Nomor Induk Pegawai atau NIK"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["superadmin", "kepala_sekolah", "guru", "staff"],
+          "description": "Peran hak akses di sistem portal"
+        },
+        "jobTitle": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Jabatan fungsional atau kelas ajar"
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Nomor telepon/WhatsApp"
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "URL atau data foto wajah verifikasi terdaftar"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive"],
+          "description": "Status keaktifan pegawai"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Waktu pembuatan akun"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Waktu pembaruan akun"
+        }
+      },
+      "required": ["id", "email", "name", "role", "nip", "status"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Catatan absensi harian pegawai berdasarkan GPS dan verifikasi wajah",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID unik kehadiran harian"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID pengguna yang melakukan absensi"
+        },
+        "userName": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Nama pegawai saat absensi"
+        },
+        "userNip": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "NIP pegawai saat absensi"
+        },
+        "userRole": {
+          "type": "string",
+          "enum": ["superadmin", "kepala_sekolah", "guru", "staff"],
+          "description": "Peran pegawai"
+        },
+        "date": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "Tanggal absensi format YYYY-MM-DD"
+        },
+        "checkInTime": {
+          "type": "string",
+          "description": "Waktu absensi masuk"
+        },
+        "checkInStatus": {
+          "type": "string",
+          "enum": ["tepat_waktu", "terlambat"],
+          "description": "Status ketepatan waktu masuk"
+        },
+        "lateMinutes": {
+          "type": "number",
+          "description": "Menit keterlambatan dari jam operasional masuk"
+        },
+        "checkInDistance": {
+          "type": "number",
+          "description": "Jarak geografis dalam meter ke titik sekolah SD BOPKRI Gondolayu"
+        },
+        "checkInLat": {
+          "type": "number",
+          "description": "Latitude koordinat saat absen masuk"
+        },
+        "checkInLng": {
+          "type": "number",
+          "description": "Longitude koordinat saat absen masuk"
+        },
+        "checkInPhoto": {
+          "type": "string",
+          "description": "Foto wajah verifikasi kehadiran masuk"
+        },
+        "checkOutTime": {
+          "type": "string",
+          "description": "Waktu absensi pulang"
+        },
+        "checkOutDistance": {
+          "type": "number",
+          "description": "Jarak geografis meter saat absen pulang"
+        },
+        "checkOutLat": {
+          "type": "number",
+          "description": "Latitude saat absen pulang"
+        },
+        "checkOutLng": {
+          "type": "number",
+          "description": "Longitude saat absen pulang"
+        },
+        "checkOutPhoto": {
+          "type": "string",
+          "description": "Foto wajah verifikasi saat absen pulang"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["hadir", "terlambat", "izin", "sakit", "alpa"],
+          "description": "Status akhir kehadiran harian"
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Catatan tugas atau keterangan keterlambatan"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Waktu pencatatan"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Waktu perbaruan"
+        }
+      },
+      "required": ["id", "userId", "userName", "date", "status"]
+    },
+    "LeaveRequest": {
+      "title": "LeaveRequest",
+      "description": "Pengajuan cuti atau izin guru dan staff dengan alur persetujuan Kepala Sekolah",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID permohonan izin"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID pemohon"
+        },
+        "userName": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Nama pemohon"
+        },
+        "userNip": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "NIP pemohon"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["izin", "sakit", "dinas_luar", "cuti", "cuti_tahunan", "cuti_melahirkan", "alasan_penting"],
+          "description": "Jenis permohonan cuti / izin"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Tanggal awal izin format YYYY-MM-DD"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "Tanggal akhir izin format YYYY-MM-DD"
+        },
+        "totalDays": {
+          "type": "number",
+          "description": "Total hari kerja yang diajukan"
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Alasan izin / cuti / sakit"
+        },
+        "documentUrl": {
+          "type": "string",
+          "description": "Foto atau link dokumen surat dokter / surat tugas"
+        },
+        "emergencyPhone": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Kontak darurat selama cuti"
+        },
+        "substituteTeacher": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Guru atau rekan kerja pengganti"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"],
+          "description": "Status persetujuan oleh Kepala Sekolah/Admin"
+        },
+        "approvedBy": {
+          "type": "string",
+          "description": "Nama atau ID penyetuju"
+        },
+        "approvalNotes": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Catatan atau instruksi Kepala Sekolah saat menyetujui / menolak"
+        },
+        "approvalDate": {
+          "type": "string",
+          "description": "Waktu persetujuan"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Waktu pengajuan"
+        }
+      },
+      "required": ["id", "userId", "userName", "type", "startDate", "endDate", "reason", "status"]
+    },
+    "SchoolConfig": {
+      "title": "SchoolConfig",
+      "description": "Pengaturan titik lokasi sekolah, toleransi radius, dan jam kerja",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID konfigurasi"
+        },
+        "schoolName": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Nama resmi sekolah"
+        },
+        "npsn": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "NPSN Sekolah"
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Alamat lengkap sekolah"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude titik pusat gerbang/sekolah SD BOPKRI Gondolayu"
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude titik pusat gerbang/sekolah SD BOPKRI Gondolayu"
+        },
+        "radiusToleranceMeters": {
+          "type": "number",
+          "description": "Radius toleransi maksimal (100 meter)"
+        },
+        "workStartTime": {
+          "type": "string",
+          "description": "Jam masuk kerja standar (misal 07:00)"
+        },
+        "lateThresholdTime": {
+          "type": "string",
+          "description": "Batas jam toleransi sebelum dihitung terlambat (misal 07:15)"
+        },
+        "workEndTime": {
+          "type": "string",
+          "description": "Jam pulang kerja hari biasa (misal 15:00)"
+        },
+        "workEndTimeFriday": {
+          "type": "string",
+          "description": "Jam pulang hari Jumat (misal 14:00)"
+        },
+        "headmasterName": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Nama Kepala Sekolah penandatangan laporan"
+        },
+        "headmasterNip": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "NIP Kepala Sekolah"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Waktu terakhir diubah superadmin"
+        }
+      },
+      "required": ["schoolName", "latitude", "longitude", "radiusToleranceMeters", "workStartTime"]
+    },
+    "PortalNotification": {
+      "title": "PortalNotification",
+      "description": "Notifikasi sistem real-time untuk absensi terlambat atau pengumuman",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID notifikasi"
+        },
+        "recipientId": {
+          "type": "string",
+          "description": "Target penerima ('all_admins' atau UID pegawai)"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Pengirim notifikasi"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 150,
+          "description": "Judul notifikasi"
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Pesan detail notifikasi"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["late_alert", "checkin_success", "leave_request", "system"],
+          "description": "Tipe notifikasi"
+        },
+        "read": {
+          "type": "boolean",
+          "description": "Status sudah dibaca"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Waktu pembuatan"
+        }
+      },
+      "required": ["id", "recipientId", "title", "message", "type", "read"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "UserProfile"
+      },
+      "description": "Data profil guru, staf, kepala sekolah dan superadmin"
+    },
+    "/attendances/{attendanceId}": {
+      "schema": {
+        "$ref": "Attendance"
+      },
+      "description": "Koleksi data absensi harian pegawai"
+    },
+    "/leave_requests/{requestId}": {
+      "schema": {
+        "$ref": "LeaveRequest"
+      },
+      "description": "Pengajuan izin dan sakit guru atau staff"
+    },
+    "/school_settings/{settingId}": {
+      "schema": {
+        "$ref": "SchoolConfig"
+      },
+      "description": "Konfigurasi koordinat dan jam absensi sekolah"
+    },
+    "/notifications/{notificationId}": {
+      "schema": {
+        "$ref": "PortalNotification"
+      },
+      "description": "Notifikasi keterlambatan dan aktivitas absensi"
+    }
+  }
+}
