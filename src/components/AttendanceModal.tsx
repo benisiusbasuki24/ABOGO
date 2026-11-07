@@ -27,16 +27,18 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
   onSuccess,
 }) => {
   const [mode, setMode] = useState<'checkin' | 'checkout'>('checkin');
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const [notes, setNotes] = useState('');
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const [isFaceAligned, setIsFaceAligned] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // Determine if checkin or checkout
   useEffect(() => {
@@ -47,13 +49,41 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
     }
   }, [existingTodayRecord]);
 
-  // Start Camera
+  // Stop camera safely
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        try {
+          track.stop();
+        } catch {
+          // ignore
+        }
+      });
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraReady(false);
+    setIsCameraStarting(false);
+  }, []);
+
+  // Start Camera with stable reference (prevents re-render blinking loops)
   const startCamera = useCallback(async () => {
     setCameraError(null);
-    try {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+
+    // If stream is already active and attached, avoid unnecessary restarts
+    if (streamRef.current && streamRef.current.active) {
+      if (videoRef.current && videoRef.current.srcObject !== streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.play().catch(() => {});
       }
+      setIsCameraReady(true);
+      return;
+    }
+
+    setIsCameraStarting(true);
+    try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: 'user',
@@ -62,41 +92,47 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
         },
         audio: false,
       });
-      setStream(mediaStream);
+
+      streamRef.current = mediaStream;
+
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch(e => console.warn('Autoplay error', e));
+          setIsCameraReady(true);
+          setIsCameraStarting(false);
+        };
+      } else {
+        setIsCameraReady(true);
+        setIsCameraStarting(false);
       }
     } catch (err) {
       console.error('Camera access denied or unavailable', err);
       setCameraError('Izin kamera diperlukan untuk verifikasi wajah absensi. Mohon izinkan akses kamera di peramban Anda.');
+      setIsCameraStarting(false);
     }
-  }, [stream]);
+  }, []);
 
-  // Stop camera when closing
-  const stopCamera = useCallback(() => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
-  }, [stream]);
-
+  // Start camera when modal opens, stop cleanly when modal closes
   useEffect(() => {
+    let alignmentTimer: NodeJS.Timeout;
+
     if (isOpen) {
       startCamera();
-      // Face alignment visual prompt cycle
-      const timer = setTimeout(() => {
+      alignmentTimer = setTimeout(() => {
         setIsFaceAligned(true);
-      }, 1500);
-      return () => {
-        clearTimeout(timer);
-        stopCamera();
-      };
+      }, 1200);
     } else {
       stopCamera();
       setCapturedPhoto(null);
       setNotes('');
       setIsFaceAligned(false);
     }
+
+    return () => {
+      clearTimeout(alignmentTimer);
+      stopCamera();
+    };
   }, [isOpen, startCamera, stopCamera]);
 
   if (!isOpen) return null;
@@ -185,7 +221,12 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
 
   const handleRetake = () => {
     setCapturedPhoto(null);
-    startCamera();
+    if (!streamRef.current || !streamRef.current.active) {
+      startCamera();
+    } else if (videoRef.current && videoRef.current.srcObject !== streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
   };
 
   const handleSubmitAttendance = async () => {
@@ -382,23 +423,39 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
                   autoPlay
                   playsInline
                   muted
-                  className="w-full h-full object-cover transform -scale-x-100"
+                  onLoadedMetadata={() => {
+                    videoRef.current?.play().catch(() => {});
+                    setIsCameraReady(true);
+                  }}
+                  className={`w-full h-full object-cover transform -scale-x-100 transition-opacity duration-200 ${
+                    isCameraReady ? 'opacity-100' : 'opacity-0'
+                  }`}
                 />
 
+                {/* Loading state indicator while camera initializes */}
+                {isCameraStarting && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 text-white gap-2">
+                    <RefreshCw className="w-6 h-6 text-blue-400 animate-spin" />
+                    <span className="text-xs text-slate-300 font-medium">Menghubungkan kamera...</span>
+                  </div>
+                )}
+
                 {/* Face Oval Frame Guide */}
-                <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                  <div
-                    className={`w-44 h-56 rounded-[50%] border-2 transition-all duration-300 ${
-                      isFaceAligned
-                        ? 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.5)]'
-                        : 'border-white/60 border-dashed'
-                    }`}
-                  ></div>
-                  <span className="mt-3 px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-xs text-[11px] font-semibold text-white border border-white/20 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                    {isFaceAligned ? 'Posisi Wajah Terdeteksi Bagus' : 'Arahkan wajah ke dalam oval'}
-                  </span>
-                </div>
+                {isCameraReady && (
+                  <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                    <div
+                      className={`w-44 h-56 rounded-[50%] border-2 transition-all duration-300 ${
+                        isFaceAligned
+                          ? 'border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.5)]'
+                          : 'border-white/60 border-dashed'
+                      }`}
+                    ></div>
+                    <span className="mt-3 px-3 py-1 rounded-full bg-slate-900/80 backdrop-blur-xs text-[11px] font-semibold text-white border border-white/20 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                      {isFaceAligned ? 'Posisi Wajah Terdeteksi Bagus' : 'Arahkan wajah ke dalam oval'}
+                    </span>
+                  </div>
+                )}
               </>
             )}
           </div>
