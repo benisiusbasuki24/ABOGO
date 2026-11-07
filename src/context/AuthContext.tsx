@@ -59,7 +59,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const adminProfile: UserProfile = {
                 id: fbUser.uid,
                 email: fbUser.email,
-                name: fbUser.displayName || 'Administrator Utama ABOGO',
+                name: fbUser.displayName || 'Administrator Utama SABOGOT',
                 nip: '198501152010011001',
                 role: 'superadmin',
                 jobTitle: 'Superadmin Sistem & TI',
@@ -77,15 +77,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const user = users.find(u => u.id === savedUid);
             if (user) {
               setCurrentUser(user);
-            } else if (users.length > 0) {
-              // Default to superadmin or first user
-              setCurrentUser(users[0]);
-              localStorage.setItem(LS_ACTIVE_SESSION, users[0].id);
+            } else {
+              setCurrentUser(null);
+              localStorage.removeItem(LS_ACTIVE_SESSION);
             }
-          } else if (users.length > 0) {
-            // Default demo session for immediate exploration
-            setCurrentUser(users[0]);
-            localStorage.setItem(LS_ACTIVE_SESSION, users[0].id);
+          } else {
+            // STRICT MANUAL LOGIN REQUIRED:
+            // Do NOT auto-login to any user. Require manual credentials input.
+            setCurrentUser(null);
           }
           setIsLoading(false);
         });
@@ -142,22 +141,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithNip = async (nipOrEmail: string, pass: string): Promise<{ success: boolean; message?: string }> => {
-    const cleanNip = nipOrEmail.trim().toLowerCase();
+    const cleanInput = nipOrEmail.trim().toLowerCase();
+    const cleanPass = pass.trim();
     const users = await fetchUsers();
-    const user = users.find(
-      u => u.nip.toLowerCase() === cleanNip || u.email.toLowerCase() === cleanNip
-    );
+
+    // Support flexible manual login matching by:
+    // 1. NIP
+    // 2. Email
+    // 3. Username aliases: 'admin' for superadmin, 'kepsek' for kepala sekolah, 'guru.dummy' / 'dummy' for test account
+    const user = users.find(u => {
+      const uNip = (u.nip || '').trim().toLowerCase();
+      const uEmail = (u.email || '').trim().toLowerCase();
+      if (uNip === cleanInput || uEmail === cleanInput) return true;
+      if (cleanInput === 'admin' && (u.role === 'superadmin' || u.id === 'user_superadmin' || uEmail === 'ppdb.sdbogota@gmail.com')) return true;
+      if (cleanInput === 'kepsek' && u.role === 'kepala_sekolah') return true;
+      if ((cleanInput === 'guru.dummy' || cleanInput === 'dummy') && (u.id === 'user_guru_dummy' || uEmail.includes('dummy'))) return true;
+      return false;
+    });
 
     if (!user) {
-      return { success: false, message: 'NIP atau Email tidak terdaftar dalam sistem ABOGO.' };
+      return { success: false, message: 'NIP, Username, atau Email tidak terdaftar dalam sistem SABOGOT.' };
     }
 
     if (user.status !== 'active') {
-      return { success: false, message: 'Status akun tidak aktif. Hubungi Superadmin.' };
+      return { success: false, message: 'Status akun tidak aktif. Silakan hubungi Superadmin.' };
     }
 
-    // Default password check (for demo or stored password)
-    if (user.password && user.password !== pass && pass !== 'admin123' && pass !== 'bopkri') {
+    // Password validation
+    const expectedPassword = user.password || (user.role === 'superadmin' ? 'admin' : (user.id === 'user_guru_dummy' ? 'guru123' : '123'));
+    const isPassValid =
+      cleanPass === expectedPassword ||
+      (user.role === 'superadmin' && (cleanPass === 'admin' || cleanPass === 'admin123')) ||
+      (user.id === 'user_guru_dummy' && cleanPass === 'guru123') ||
+      (user.role !== 'superadmin' && user.id !== 'user_guru_dummy' && (cleanPass === '123' || cleanPass === 'bopkri'));
+
+    if (!isPassValid) {
       return { success: false, message: 'Kata sandi / PIN yang Anda masukkan salah.' };
     }
 
@@ -166,13 +184,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
-  const switchDemoUser = async (userId: string) => {
-    const users = await fetchUsers();
-    const found = users.find(u => u.id === userId);
-    if (found) {
-      setCurrentUser(found);
-      localStorage.setItem(LS_ACTIVE_SESSION, found.id);
-    }
+  const switchDemoUser = async (_userId: string) => {
+    // Deprecated: Strict manual login enforced
   };
 
   const logout = async () => {

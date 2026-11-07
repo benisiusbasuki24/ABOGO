@@ -238,7 +238,7 @@ export const LeaveManagement: React.FC<LeaveManagementProps> = ({
         <div className="space-y-1.5 max-w-xl">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
-              Layanan Kepegawaian ABOGO
+              Layanan Kepegawaian SABOGOT
             </span>
             <span className="text-xs text-slate-500 font-medium">
               SD BOPKRI GONDOLAYU

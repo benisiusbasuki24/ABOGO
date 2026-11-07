@@ -143,7 +143,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
     // Header text
     ctx.font = 'bold 14px "Plus Jakarta Sans", sans-serif';
     ctx.fillStyle = '#60a5fa'; // Blue 400
-    ctx.fillText('SD BOPKRI GONDOLAYU - VERIFIKASI WAJAH ABOGO', 14, 23);
+    ctx.fillText('SD BOPKRI GONDOLAYU - VERIFIKASI WAJAH SABOGOT', 14, 23);
 
     // Bottom Stamp details
     ctx.font = 'bold 13px "Plus Jakarta Sans", sans-serif';

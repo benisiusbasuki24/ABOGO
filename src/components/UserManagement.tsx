@@ -134,7 +134,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       alert('Anda tidak dapat menghapus akun Anda sendiri.');
       return;
     }
-    if (confirm('Apakah Anda yakin ingin menghapus data pengguna ini dari portal ABOGO?')) {
+    if (confirm('Apakah Anda yakin ingin menghapus data pengguna ini dari portal SABOGOT?')) {
       try {
         await removeUser(userId);
         setIsDeletingId(null);

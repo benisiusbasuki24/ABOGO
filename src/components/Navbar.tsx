@@ -44,7 +44,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   allUsers,
   pendingLeavesCount = 0,
 }) => {
-  const { currentUser, logout, isSuperAdmin, isKepalaSekolah, canApproveLeaves, switchDemoUser } = useAuth();
+  const { currentUser, logout, isSuperAdmin, isKepalaSekolah, canApproveLeaves } = useAuth();
   const [timeStr, setTimeStr] = useState<string>('');
   const [dateStr, setDateStr] = useState<string>('');
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -96,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-slate-900 tracking-tight text-base">
-                  ABOGO
+                  SABOGOT
                 </span>
                 <span className="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
                   SD BOPKRI GONDOLAYU
@@ -315,7 +315,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-slate-100 text-slate-700 flex items-center gap-2 cursor-pointer font-medium"
                       >
                         <UserCheck className="w-4 h-4 text-purple-600" />
-                        <span>Ganti Akun Demo / Login</span>
+                        <span>Ganti Akun / Login</span>
                       </button>
                     </div>
 

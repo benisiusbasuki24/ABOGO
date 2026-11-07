@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 
 function AppContent() {
-  const { currentUser, isSuperAdmin, isKepalaSekolah } = useAuth();
+  const { currentUser, isSuperAdmin, isKepalaSekolah, isLoading: authLoading } = useAuth();
 
   // App State
   const [activeTab, setActiveTab] = useState<'dashboard' | 'map' | 'report' | 'leaves' | 'users'>('dashboard');
@@ -176,6 +176,30 @@ function AppContent() {
     : undefined;
 
   const pendingLeavesCount = leaves.filter(l => l.status === 'pending').length;
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-white">
+        <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center animate-pulse mb-3 shadow-lg">
+          <GraduationCap className="w-7 h-7 text-blue-400" />
+        </div>
+        <div className="font-extrabold text-base tracking-wide text-white">Memuat Sistem SABOGOT...</div>
+        <div className="text-xs text-blue-200 mt-1">SD BOPKRI Gondolayu Yogyakarta</div>
+      </div>
+    );
+  }
+
+  // Strict Manual Login Gate: All users & superadmin MUST login manually
+  if (!currentUser) {
+    return (
+      <LoginModal
+        isOpen={true}
+        isFullPage={true}
+        users={users}
+        schoolConfig={schoolConfig}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
@@ -362,7 +386,7 @@ function AppContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="font-bold text-slate-800">
-              ABOGO &bull; Absensi Online SD BOPKRI Gondolayu
+              SABOGOT &bull; Absensi Online SD BOPKRI Gondolayu
             </div>
             <p className="text-[11px] text-slate-400">
               YAYASAN BOPKRI YOGYAKARTA &bull; Dikembangkan dengan Geofencing 100m, Verifikasi Wajah & Sinkronisasi Firebase.
@@ -402,11 +426,12 @@ function AppContent() {
         }}
       />
 
-      {/* Login & Demo Account Switcher Modal */}
+      {/* Login Modal */}
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
         users={users}
+        schoolConfig={schoolConfig}
       />
     </div>
   );

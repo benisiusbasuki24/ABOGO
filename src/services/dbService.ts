@@ -89,8 +89,24 @@ export async function fetchUsers(): Promise<UserProfile[]> {
         }
         users.push(u);
       });
+
+      // Ensure 1 dummy user account is present in Firestore and local state
+      const hasDummy = users.some(u => u.id === 'user_guru_dummy' || u.email === 'dummy.guru@sdbogota.sch.id');
+      if (!hasDummy) {
+        const dummyUser = INITIAL_USERS.find(u => u.id === 'user_guru_dummy');
+        if (dummyUser) {
+          users.push(dummyUser);
+          setDoc(doc(db, 'users', dummyUser.id), dummyUser).catch(() => {});
+        }
+      }
+
       localStorage.setItem(LS_USERS, JSON.stringify(users));
       return users;
+    } else {
+      // Seed initial users into Firestore
+      for (const u of INITIAL_USERS) {
+        setDoc(doc(db, 'users', u.id), u).catch(() => {});
+      }
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.LIST, 'users', auth.currentUser);
@@ -105,6 +121,11 @@ export async function fetchUsers(): Promise<UserProfile[]> {
         ? { ...u, name: 'Fransiscus Xaverius Suhari Irawan, S.E.' }
         : u
     );
+    const hasDummy = sanitized.some(u => u.id === 'user_guru_dummy');
+    if (!hasDummy) {
+      const dummyUser = INITIAL_USERS.find(u => u.id === 'user_guru_dummy');
+      if (dummyUser) sanitized.push(dummyUser);
+    }
     return sanitized;
   }
   localStorage.setItem(LS_USERS, JSON.stringify(INITIAL_USERS));
