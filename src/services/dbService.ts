@@ -135,6 +135,17 @@ export async function fetchUsers(): Promise<UserProfile[]> {
   return INITIAL_USERS;
 }
 
+// Helper to remove any undefined fields before sending to Firestore (prevents Firestore rejection)
+export function cleanDocData<T extends Record<string, any>>(data: T): Record<string, any> {
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 export async function saveUser(user: UserProfile): Promise<void> {
   // Update local storage first
   const existing = await fetchUsers();
@@ -148,11 +159,17 @@ export async function saveUser(user: UserProfile): Promise<void> {
   }
   localStorage.setItem(LS_USERS, JSON.stringify(updated));
 
-  // Sync to Firestore
+  // Sync to Firestore with sanitized payload
   try {
-    await setDoc(doc(db, 'users', user.id), user);
+    const cleaned = cleanDocData(user);
+    await setDoc(doc(db, 'users', user.id), cleaned);
   } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, `users/${user.id}`, auth.currentUser);
+    console.warn('Firestore setDoc warning for user:', user.id, err);
+    try {
+      handleFirestoreError(err, OperationType.WRITE, `users/${user.id}`, auth.currentUser);
+    } catch {
+      // Keep going if handled
+    }
   }
 }
 
@@ -165,14 +182,17 @@ export async function saveUsersBatch(usersToSave: UserProfile[]): Promise<void> 
   const updated = Array.from(map.values());
   localStorage.setItem(LS_USERS, JSON.stringify(updated));
 
-  // Sync to Firestore in parallel
-  try {
-    await Promise.all(
-      usersToSave.map(u => setDoc(doc(db, 'users', u.id), u))
-    );
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, 'users/batch', auth.currentUser);
-  }
+  // Sync to Firestore in parallel with sanitized payloads
+  const promises = usersToSave.map(async u => {
+    try {
+      const cleaned = cleanDocData(u);
+      await setDoc(doc(db, 'users', u.id), cleaned);
+    } catch (err) {
+      console.error(`Failed to save user ${u.name} (${u.id}) to Firestore:`, err);
+    }
+  });
+
+  await Promise.all(promises);
 }
 
 export async function removeUser(userId: string): Promise<void> {

@@ -152,10 +152,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
-        const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        
+        // Parse with raw: false to retain cell string representations (preserves full 18-digit NIPs)
+        const rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: false }) as any[][];
 
         if (!rawJson || rawJson.length < 2) {
           setUploadError('Berkas kosong atau tidak memiliki baris data pegawai.');
@@ -163,51 +165,92 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           return;
         }
 
-        const headers = (rawJson[0] || []).map(h => String(h || '').trim().toLowerCase());
-        const findIndex = (keywords: string[]) => {
-          return headers.findIndex(h => keywords.some(k => h.includes(k)));
-        };
+        // Search the first 15 rows for the table header row
+        let headerRowIndex = 0;
+        let nipIdx = -1;
+        let nameIdx = -1;
+        let emailIdx = -1;
+        let roleIdx = -1;
+        let jobIdx = -1;
+        let phoneIdx = -1;
+        let passIdx = -1;
+        let statusIdx = -1;
 
-        const nipIdx = findIndex(['nip', 'nik', 'nomor induk']);
-        const nameIdx = findIndex(['nama', 'lengkap', 'pegawai']);
-        const emailIdx = findIndex(['email', 'surel', 'e-mail']);
-        const roleIdx = findIndex(['peran', 'role', 'posisi']);
-        const jobIdx = findIndex(['jabatan', 'unit', 'tugas', 'bagian']);
-        const phoneIdx = findIndex(['telepon', 'hp', 'wa', 'whatsapp', 'kontak', 'phone']);
-        const passIdx = findIndex(['sandi', 'password', 'pin', 'pass']);
-        const statusIdx = findIndex(['status', 'keaktifan']);
+        for (let r = 0; r < Math.min(15, rawJson.length); r++) {
+          const rowHeaders = (rawJson[r] || []).map(h => String(h || '').trim().toLowerCase());
+          const fNip = rowHeaders.findIndex(h => ['nip', 'nik', 'nomor induk', 'no. induk', 'id pegawai'].some(k => h.includes(k)));
+          const fName = rowHeaders.findIndex(h => ['nama', 'lengkap', 'pegawai', 'guru', 'staf', 'staff'].some(k => h.includes(k)));
+          if (fNip !== -1 || fName !== -1) {
+            headerRowIndex = r;
+            nipIdx = fNip;
+            nameIdx = fName;
+            emailIdx = rowHeaders.findIndex(h => ['email', 'surel', 'e-mail'].some(k => h.includes(k)));
+            roleIdx = rowHeaders.findIndex(h => ['peran', 'role', 'posisi', 'status kepegawaian'].some(k => h.includes(k)));
+            jobIdx = rowHeaders.findIndex(h => ['jabatan', 'unit', 'tugas', 'bagian', 'mata pelajaran', 'mapel'].some(k => h.includes(k)));
+            phoneIdx = rowHeaders.findIndex(h => ['telepon', 'hp', 'wa', 'whatsapp', 'kontak', 'phone', 'no hp', 'no. hp'].some(k => h.includes(k)));
+            passIdx = rowHeaders.findIndex(h => ['sandi', 'password', 'pin', 'pass', 'kata sandi'].some(k => h.includes(k)));
+            statusIdx = rowHeaders.findIndex(h => ['status', 'keaktifan', 'kondisi'].some(k => h.includes(k)));
+            break;
+          }
+        }
 
+        // If no explicit header was matched, fallback to common column order: Col 0 = No/NIP, Col 1 = NIP/Name, Col 2 = Name/Email
         if (nipIdx === -1 && nameIdx === -1) {
-          setUploadError('Format kolom tidak sesuai. Pastikan kolom NIP dan Nama Lengkap tersedia.');
-          setParsedRows([]);
-          return;
+          if (rawJson[0].length >= 2) {
+            headerRowIndex = 0;
+            nipIdx = 1;
+            nameIdx = 2;
+            emailIdx = 3;
+            roleIdx = 4;
+            jobIdx = 5;
+          } else {
+            setUploadError('Format kolom tidak dapat dideteksi. Pastikan file memiliki kolom NIP/NIK dan Nama Lengkap.');
+            setParsedRows([]);
+            return;
+          }
         }
 
         const rows: ParsedUserRow[] = [];
         const seenNips = new Set<string>();
-        const seenEmails = new Set<string>();
 
-        for (let i = 1; i < rawJson.length; i++) {
+        for (let i = headerRowIndex + 1; i < rawJson.length; i++) {
           const row = rawJson[i];
           if (!row || row.length === 0 || row.every(c => c === undefined || c === null || String(c).trim() === '')) {
             continue;
           }
 
-          const nip = String(nipIdx !== -1 && row[nipIdx] !== undefined ? row[nipIdx] : '').trim();
+          let nip = String(nipIdx !== -1 && row[nipIdx] !== undefined ? row[nipIdx] : '').trim();
+          if (nip.endsWith('.0')) nip = nip.slice(0, -2);
+
           const name = String(nameIdx !== -1 && row[nameIdx] !== undefined ? row[nameIdx] : '').trim();
-          const email = String(emailIdx !== -1 && row[emailIdx] !== undefined ? row[emailIdx] : '').trim().toLowerCase();
+          let email = String(emailIdx !== -1 && row[emailIdx] !== undefined ? row[emailIdx] : '').trim().toLowerCase();
           const rawRole = String(roleIdx !== -1 && row[roleIdx] !== undefined ? row[roleIdx] : '').trim().toLowerCase();
           const jobTitle = String(jobIdx !== -1 && row[jobIdx] !== undefined ? row[jobIdx] : '').trim();
           const phone = String(phoneIdx !== -1 && row[phoneIdx] !== undefined ? row[phoneIdx] : '').trim();
           const password = String(passIdx !== -1 && row[passIdx] !== undefined ? row[passIdx] : '123').trim();
           const rawStatus = String(statusIdx !== -1 && row[statusIdx] !== undefined ? row[statusIdx] : 'active').trim().toLowerCase();
 
+          // Auto-generate clean official email if missing or invalid in user's file
+          if (!email || !email.includes('@')) {
+            const cleanSlug = name
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '.')
+              .replace(/\.+/g, '.')
+              .replace(/^\.|\.$/g, '');
+            email = `${cleanSlug || 'pegawai'}.${(nip || String(i)).slice(-4)}@sdbogota.sch.id`;
+          }
+
+          // Auto-generate NIP if somehow missing
+          if (!nip) {
+            nip = `PEG${Date.now().toString().slice(-6)}${i}`;
+          }
+
           let role: UserRole = 'guru';
           if (rawRole.includes('kepala') || rawRole.includes('kepsek')) {
             role = 'kepala_sekolah';
           } else if (rawRole.includes('superadmin') || rawRole.includes('admin')) {
             role = 'superadmin';
-          } else if (rawRole.includes('staff') || rawRole.includes('tu') || rawRole.includes('pustakawan')) {
+          } else if (rawRole.includes('staff') || rawRole.includes('tu') || rawRole.includes('pustakawan') || rawRole.includes('penjaga') || rawRole.includes('satpam')) {
             role = 'staff';
           }
 
@@ -215,26 +258,19 @@ export const UserManagement: React.FC<UserManagementProps> = ({
             rawStatus.includes('non') || rawStatus.includes('pasif') || rawStatus === 'inactive' ? 'inactive' : 'active';
 
           let errorMsg = '';
-          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-          if (!nip) {
-            errorMsg = 'NIP / NIK tidak boleh kosong';
-          } else if (!name) {
+          if (!name) {
             errorMsg = 'Nama lengkap wajib diisi';
-          } else if (!email || !emailRegex.test(email)) {
-            errorMsg = 'Format email tidak valid';
           } else if (seenNips.has(nip)) {
-            errorMsg = 'NIP terduplikasi di berkas ini';
-          } else if (seenEmails.has(email)) {
-            errorMsg = 'Email terduplikasi di berkas ini';
+            errorMsg = 'NIP terduplikasi di dalam berkas ini';
           }
 
           if (!errorMsg) {
             seenNips.add(nip);
-            seenEmails.add(email);
           }
 
-          const existingUser = users.find(u => u.nip.trim() === nip || u.email.trim().toLowerCase() === email);
+          const existingUser = users.find(
+            u => (u.nip && u.nip.trim() === nip) || (u.email && u.email.trim().toLowerCase() === email)
+          );
 
           rows.push({
             rowNumber: i + 1,
@@ -253,10 +289,14 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           });
         }
 
+        if (rows.length === 0) {
+          setUploadError('Tidak ditemukan baris data pegawai yang valid setelah membaca berkas.');
+        }
+
         setParsedRows(rows);
       } catch (err) {
         console.error('Failed to parse file', err);
-        setUploadError('Gagal memproses berkas. Pastikan file berformat Excel (.xlsx/.xls) atau CSV.');
+        setUploadError('Gagal memproses berkas Excel/CSV. Pastikan format file sesuai (.xlsx, .xls, .csv).');
         setParsedRows([]);
       }
     };
@@ -291,7 +331,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const handleExecuteImport = async () => {
     const importableRows = parsedRows.filter(r => r.isValid && (overwriteExisting || !r.isExisting));
     if (importableRows.length === 0) {
-      alert('Tidak ada baris data yang siap diimpor.');
+      alert('Tidak ada baris data yang siap diimpor. Periksa status baris di tabel pratinjau.');
       return;
     }
 
@@ -300,20 +340,23 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       const now = new Date().toISOString();
       const usersToSave: UserProfile[] = importableRows.map(r => {
         const existing = r.existingId ? users.find(u => u.id === r.existingId) : null;
-        return {
+        const profile: UserProfile = {
           id: r.existingId || `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           name: r.name,
           nip: r.nip,
           email: r.email,
           role: r.role,
           jobTitle: r.jobTitle,
-          phone: r.phone,
+          phone: r.phone || '',
           password: r.password || (existing?.password || '123'),
-          photoUrl: existing?.photoUrl,
           status: r.status,
           createdAt: existing?.createdAt || now,
           updatedAt: now,
         };
+        if (existing?.photoUrl) {
+          profile.photoUrl = existing.photoUrl;
+        }
+        return profile;
       });
 
       await saveUsersBatch(usersToSave);
@@ -322,12 +365,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       setParsedRows([]);
       setUploadedFileName(null);
       onRefresh();
-      setSuccessToast(`Berhasil mengimpor ${usersToSave.length} data pegawai ke sistem PREBOGO & Cloud Firestore.`);
-      setTimeout(() => setSuccessToast(null), 5000);
+      setSuccessToast(`Berhasil menyimpan ${usersToSave.length} data pegawai ke sistem PREBOGO dan Cloud Firestore.`);
+      setTimeout(() => setSuccessToast(null), 6000);
     } catch (err) {
       console.error('Failed to import users', err);
       setIsImporting(false);
-      alert('Terjadi kendala saat menyimpan data ke Cloud Firestore. Silakan coba kembali.');
+      alert('Terjadi kendala saat menyimpan data ke sistem. Pastikan koneksi internet stabil.');
     }
   };
 
