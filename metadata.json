@@ -1,6 +1,6 @@
 {
-  "name": "PREBOGO - Portal Absensi SD BOPKRI Gondolayu",
-  "description": "Portal absensi online berbasis geolokasi dan verifikasi wajah untuk Kepala Sekolah, Guru, dan Staff SD BOPKRI Gondolayu Yogyakarta.",
+  "name": "PREBOGO - Portal Presensi SD BOPKRI Gondolayu",
+  "description": "Portal presensi online berbasis geolokasi dan verifikasi wajah untuk Kepala Sekolah, Guru, dan Staff SD BOPKRI Gondolayu Yogyakarta.",
   "requestFramePermissions": ["camera", "geolocation"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

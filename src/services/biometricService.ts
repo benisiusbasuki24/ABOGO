@@ -72,7 +72,7 @@ function base64ToBuffer(base64: string): ArrayBuffer {
 // Get all local biometric registrations on this device
 export function getLocalBiometricRegistry(): BiometricRegistration[] {
   try {
-    const data = localStorage.getItem(LS_BIOMETRIC_REGISTRY) || localStorage.getItem('sabogot_biometric_registry_v1');
+    const data = localStorage.getItem(LS_BIOMETRIC_REGISTRY);
     if (!data) return [];
     return JSON.parse(data);
   } catch {

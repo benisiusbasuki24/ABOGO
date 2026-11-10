@@ -108,7 +108,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
       }
     } catch (err) {
       console.error('Camera access denied or unavailable', err);
-      setCameraError('Izin kamera diperlukan untuk verifikasi wajah absensi. Mohon izinkan akses kamera di peramban Anda.');
+      setCameraError('Izin kamera diperlukan untuk verifikasi wajah presensi. Mohon izinkan akses kamera di peramban Anda.');
       setIsCameraStarting(false);
     }
   }, []);
@@ -276,7 +276,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
             senderId: currentUser.id,
             senderName: currentUser.name,
             title: `Keterlambatan: ${currentUser.name}`,
-            message: `${currentUser.name} (${currentUser.jobTitle}) melakukan absensi masuk pukul ${timeStr} WIB (Terlambat ${lateMinutes} menit). Catatan: ${notes || 'Tanpa keterangan'}`,
+            message: `${currentUser.name} (${currentUser.jobTitle}) melakukan presensi masuk pukul ${timeStr} WIB (Terlambat ${lateMinutes} menit). Catatan: ${notes || 'Tanpa keterangan'}`,
             type: 'late_alert',
             read: false,
             createdAt: now.toISOString(),
@@ -302,7 +302,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
       onClose();
     } catch (err) {
       console.error('Failed to submit attendance', err);
-      alert('Terjadi kendala saat menyimpan absensi. Silakan coba kembali.');
+      alert('Terjadi kendala saat menyimpan presensi. Silakan coba kembali.');
     } finally {
       setIsSubmitting(false);
     }
@@ -319,7 +319,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold">
-                {mode === 'checkin' ? 'Absensi Masuk Harian' : 'Absensi Pulang Kerja'}
+                {mode === 'checkin' ? 'Presensi Masuk Harian' : 'Presensi Pulang Kerja'}
               </h2>
               <p className="text-xs text-blue-200">
                 SD BOPKRI GONDOLAYU &bull; {currentUser.name}
@@ -370,7 +370,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
               <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div>
                 <strong className="font-bold">Peringatan Keterlambatan: </strong>
-                Anda melakukan absensi lewat dari batas jam operasional ({schoolConfig.lateThresholdTime || '07:15'} WIB). Terlambat sekitar {lateMinutes} menit.
+                Anda melakukan presensi lewat dari batas jam operasional ({schoolConfig.lateThresholdTime || '07:15'} WIB). Terlambat sekitar {lateMinutes} menit.
               </div>
             </div>
           )}
@@ -392,7 +392,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <strong className="font-bold">Di Luar Titik Sekolah: </strong>
-                Sistem mendeteksi jarak Anda {Math.round(distanceMeters || 0)}m dari SD BOPKRI Gondolayu. Toleransi absensi adalah maksimal 100 meter.
+                Sistem mendeteksi jarak Anda {Math.round(distanceMeters || 0)}m dari SD BOPKRI Gondolayu. Toleransi presensi adalah maksimal 100 meter.
               </div>
             </div>
           )}
@@ -402,7 +402,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
             {capturedPhoto ? (
               <img
                 src={capturedPhoto}
-                alt="Foto Absensi"
+                alt="Foto Presensi"
                 className="w-full h-full object-cover"
               />
             ) : cameraError ? (
@@ -528,10 +528,10 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
             <CheckCircle className="w-4 h-4" />
             <span>
               {isSubmitting
-                ? 'Menyimpan Absensi...'
+                ? 'Menyimpan Presensi...'
                 : mode === 'checkin'
-                ? 'Kirim Absensi Masuk'
-                : 'Kirim Absensi Pulang'}
+                ? 'Kirim Presensi Masuk'
+                : 'Kirim Presensi Pulang'}
             </span>
           </button>
         </div>

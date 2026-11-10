@@ -172,20 +172,6 @@ export const INITIAL_USERS: UserProfile[] = [
     createdAt: '2026-01-01T07:00:00Z',
     updatedAt: '2026-01-01T07:00:00Z',
   },
-  {
-    id: 'user_guru_dummy',
-    email: 'dummy.guru@sdbogota.sch.id',
-    name: 'Budi Santoso, S.Pd. (Akun Uji Coba)',
-    nip: '199501012025011001',
-    role: 'guru',
-    jobTitle: 'Guru Kelas (Akun Uji Coba Dummy)',
-    phone: '081298765432',
-    photoUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    status: 'active',
-    password: 'guru123',
-    createdAt: '2026-01-01T07:00:00Z',
-    updatedAt: '2026-01-01T07:00:00Z',
-  },
 ];
 
 export const generateSampleAttendances = (): AttendanceRecord[] => {

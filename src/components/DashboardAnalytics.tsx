@@ -97,7 +97,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
           <div className="space-y-2 max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-xs font-semibold text-blue-200">
               <Sparkles className="w-3.5 h-3.5 text-blue-300" />
-              <span>Portal Absensi Cerdas &bull; SD BOPKRI Gondolayu</span>
+              <span>Portal Presensi Cerdas &bull; SD BOPKRI Gondolayu</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
               Selamat Datang, {currentUser.name}
@@ -146,7 +146,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 className="w-full py-2.5 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ShieldCheck className="w-4 h-4" />
-                <span>Lakukan Absensi Masuk</span>
+                <span>Lakukan Presensi Masuk</span>
               </button>
             )}
           </div>
@@ -287,7 +287,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
               {statusFilter === 'belum_absen' && (
                 unrecordedUsers.length === 0 ? (
                   <div className="py-8 text-center text-slate-400 text-xs">
-                    Semua guru dan staf telah melakukan absensi hari ini.
+                    Semua guru dan staf telah melakukan presensi hari ini.
                   </div>
                 ) : (
                   unrecordedUsers.map(user => (

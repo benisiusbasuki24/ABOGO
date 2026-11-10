@@ -54,10 +54,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const activeStaffList = users.filter(
+    u => u.id !== 'user_guru_dummy' && !u.email?.includes('dummy') && !u.name?.toLowerCase().includes('uji coba')
+  );
+
   // Biometric Sub-mode: 'sensor' (Fingerprint / TouchID / WebAuthn) or 'camera_face' (Camera Scan)
   const [bioMode, setBioMode] = useState<'sensor' | 'camera_face'>('sensor');
   const [selectedBioUser, setSelectedBioUser] = useState<string>(
-    registeredBiometricUser?.userId || 'user_guru_dummy'
+    registeredBiometricUser?.userId || (activeStaffList.length > 0 ? activeStaffList[0].id : '')
   );
 
   // Camera state for Face Biometric Scan
@@ -279,7 +283,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               </div>
               <div>
                 <span className="text-[10px] font-extrabold tracking-widest text-blue-300 uppercase block">
-                  PORTAL RESMI ABSENSI
+                  PORTAL RESMI PRESENSI
                 </span>
                 <h1 className="text-2xl font-black tracking-tight text-white">
                   PREBOGO
@@ -292,7 +296,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 SD BOPKRI GONDOLAYU
               </h2>
               <p className="text-xs text-blue-200 leading-relaxed">
-                Sistem Absensi Terpadu dengan Geofence GPS 100m, Verifikasi Wajah, dan <strong>Login Biometrik</strong> Cepat.
+                Sistem Presensi Terpadu dengan Geofence GPS 100m, Verifikasi Wajah, dan <strong>Login Biometrik</strong> Cepat.
               </p>
             </div>
 
@@ -461,7 +465,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         onChange={e => setSelectedBioUser(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                       >
-                        {users.map(u => (
+                        {activeStaffList.map(u => (
                           <option key={u.id} value={u.id}>
                             {u.name} ({u.jobTitle})
                           </option>
@@ -534,7 +538,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                         onChange={e => setSelectedBioUser(e.target.value)}
                         className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {users.map(u => (
+                        {activeStaffList.map(u => (
                           <option key={u.id} value={u.id}>
                             {u.name} ({u.jobTitle})
                           </option>
@@ -610,7 +614,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     required
                     value={nipInput}
                     onChange={e => setNipInput(e.target.value)}
-                    placeholder="Contoh: guru.dummy atau admin atau 19850115..."
+                    placeholder="Contoh: admin atau kepsek atau NIP pegawai..."
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-xs font-medium"
                   />
                 </div>
@@ -691,24 +695,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               <span>Panduan Kredensial Login Cepat:</span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px]">
-              {/* Dummy User Account */}
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('nip');
-                  handleFillCredentials('guru.dummy', 'guru123');
-                }}
-                className="p-2 rounded-xl border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-left transition-all cursor-pointer group"
-              >
-                <div className="font-bold text-emerald-800 flex items-center justify-between">
-                  <span>Akun Uji Coba (Dummy)</span>
-                  <UserCheck className="w-3 h-3 text-emerald-600" />
-                </div>
-                <div className="text-emerald-700 font-mono mt-0.5">guru.dummy</div>
-                <div className="text-emerald-600 text-[9px]">Pass: <code>guru123</code></div>
-              </button>
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[10px]">
               {/* Superadmin Account */}
               <button
                 type="button"
@@ -716,14 +703,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   setActiveTab('nip');
                   handleFillCredentials('admin', 'admin');
                 }}
-                className="p-2 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-left transition-all cursor-pointer group"
+                className="p-2.5 rounded-xl border border-blue-200 bg-blue-50/70 hover:bg-blue-100 text-left transition-all cursor-pointer group"
               >
                 <div className="font-bold text-blue-800 flex items-center justify-between">
-                  <span>Superadmin</span>
-                  <Shield className="w-3 h-3 text-blue-600" />
+                  <span>Superadmin Resmi</span>
+                  <Shield className="w-3.5 h-3.5 text-blue-600" />
                 </div>
-                <div className="text-blue-700 font-mono mt-0.5">admin</div>
-                <div className="text-blue-600 text-[9px]">Pass: <code>admin</code></div>
+                <div className="text-blue-700 font-mono mt-0.5 font-semibold">Username: admin</div>
+                <div className="text-blue-600 text-[9px]">Sandi: <code>admin</code></div>
               </button>
 
               {/* Kepala Sekolah Account */}
@@ -733,14 +720,14 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   setActiveTab('nip');
                   handleFillCredentials('kepsek', '123');
                 }}
-                className="p-2 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-left transition-all cursor-pointer group"
+                className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/70 hover:bg-amber-100 text-left transition-all cursor-pointer group"
               >
                 <div className="font-bold text-amber-800 flex items-center justify-between">
                   <span>Kepala Sekolah</span>
-                  <GraduationCap className="w-3 h-3 text-amber-600" />
+                  <GraduationCap className="w-3.5 h-3.5 text-amber-600" />
                 </div>
-                <div className="text-amber-700 font-mono mt-0.5">kepsek</div>
-                <div className="text-amber-600 text-[9px]">Pass: <code>123</code></div>
+                <div className="text-amber-700 font-mono mt-0.5 font-semibold">Username: kepsek</div>
+                <div className="text-amber-600 text-[9px]">Sandi: <code>123</code></div>
               </button>
             </div>
           </div>

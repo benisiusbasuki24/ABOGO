@@ -331,10 +331,10 @@ function AppContent() {
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
               <h2 className="text-lg font-bold text-slate-800">
-                Peta Titik Absensi & Radius Geofence SD BOPKRI Gondolayu
+                Peta Titik Presensi & Radius Geofence SD BOPKRI Gondolayu
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Presensi absensi guru dan staf hanya dapat dikirim jika perangkat Anda berada dalam batas toleransi 100 meter dari koordinat sekolah.
+                Presensi guru dan staf hanya dapat dikirim jika perangkat Anda berada dalam batas toleransi 100 meter dari koordinat sekolah.
               </p>
             </div>
 
@@ -386,7 +386,7 @@ function AppContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="font-bold text-slate-800">
-              PREBOGO &bull; Absensi Online SD BOPKRI Gondolayu
+              PREBOGO &bull; Presensi Online SD BOPKRI Gondolayu
             </div>
             <p className="text-[11px] text-slate-400">
               YAYASAN BOPKRI YOGYAKARTA &bull; Dikembangkan dengan Geofencing 100m, Verifikasi Wajah & Sinkronisasi Firebase.

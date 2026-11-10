@@ -132,7 +132,7 @@ export function exportMonthlyReportToPDF(
     year: 'numeric',
   }).format(new Date());
 
-  // Left Sign: Admin / Pengelola Absensi
+  // Left Sign: Admin / Pengelola Presensi
   doc.text('Mengetahui,', 30, signatureY);
   doc.text('Admin Kepegawaian & IT', 30, signatureY + 5);
   doc.text('( .................................................. )', 30, signatureY + 28);
@@ -147,7 +147,7 @@ export function exportMonthlyReportToPDF(
   doc.text(`NIP. ${schoolConfig.headmasterNip || '197204121998032004'}`, 210, signatureY + 33);
 
   // Save the PDF
-  doc.save(`Rekap_Absensi_PREBOGO_${monthName}_${year}.pdf`);
+  doc.save(`Rekap_Presensi_PREBOGO_${monthName}_${year}.pdf`);
 }
 
 export function exportMonthlyReportToExcel(
@@ -217,5 +217,5 @@ export function exportMonthlyReportToExcel(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `Rekap_${monthName}`);
 
-  XLSX.writeFile(wb, `Rekap_Absensi_PREBOGO_${monthName}_${year}.xlsx`);
+  XLSX.writeFile(wb, `Rekap_Presensi_PREBOGO_${monthName}_${year}.xlsx`);
 }

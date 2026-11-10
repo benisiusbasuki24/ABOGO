@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async function initAuth() {
       try {
         const users = await fetchUsers();
-        const savedUid = localStorage.getItem(LS_ACTIVE_SESSION) || localStorage.getItem('abogo_active_session_uid');
+        const savedUid = localStorage.getItem(LS_ACTIVE_SESSION);
 
         // Check Firebase Auth state
         onAuthStateChanged(auth, async fbUser => {
@@ -175,14 +175,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Support flexible manual login matching by:
     // 1. NIP
     // 2. Email
-    // 3. Username aliases: 'admin' for superadmin, 'kepsek' for kepala sekolah, 'guru.dummy' / 'dummy' for test account
+    // 3. Username aliases: 'admin' for superadmin, 'kepsek' for kepala sekolah
     const user = users.find(u => {
       const uNip = (u.nip || '').trim().toLowerCase();
       const uEmail = (u.email || '').trim().toLowerCase();
       if (uNip === cleanInput || uEmail === cleanInput) return true;
       if (cleanInput === 'admin' && (u.role === 'superadmin' || u.id === 'user_superadmin' || uEmail === 'ppdb.sdbogota@gmail.com')) return true;
       if (cleanInput === 'kepsek' && u.role === 'kepala_sekolah') return true;
-      if ((cleanInput === 'guru.dummy' || cleanInput === 'dummy') && (u.id === 'user_guru_dummy' || uEmail.includes('dummy'))) return true;
       return false;
     });
 
@@ -195,12 +194,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // Password validation
-    const expectedPassword = user.password || (user.role === 'superadmin' ? 'admin' : (user.id === 'user_guru_dummy' ? 'guru123' : '123'));
+    const expectedPassword = user.password || (user.role === 'superadmin' ? 'admin' : '123');
     const isPassValid =
       cleanPass === expectedPassword ||
       (user.role === 'superadmin' && (cleanPass === 'admin' || cleanPass === 'admin123')) ||
-      (user.id === 'user_guru_dummy' && cleanPass === 'guru123') ||
-      (user.role !== 'superadmin' && user.id !== 'user_guru_dummy' && (cleanPass === '123' || cleanPass === 'bopkri'));
+      (user.role !== 'superadmin' && (cleanPass === '123' || cleanPass === 'bopkri'));
 
     if (!isPassValid) {
       return { success: false, message: 'Kata sandi / PIN yang Anda masukkan salah.' };

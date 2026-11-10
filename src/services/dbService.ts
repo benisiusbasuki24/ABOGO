@@ -52,35 +52,17 @@ const LS_LEAVES = 'prebogo_leaves_v2';
 const LS_CONFIG = 'prebogo_config_v2';
 const LS_NOTIFS = 'prebogo_notifications_v2';
 
-// Migrate any data from legacy abogo keys if found and purge old local storage cache keys
+// Clean up legacy caches and ensure clean state
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
-    // Smooth migration from abogo_* to prebogo_*
-    const legacyKeys: [string, string][] = [
-      ['abogo_users_v2', LS_USERS],
-      ['abogo_attendances_v2', LS_ATTENDANCES],
-      ['abogo_leaves_v2', LS_LEAVES],
-      ['abogo_config_v2', LS_CONFIG],
-      ['abogo_notifications_v2', LS_NOTIFS],
-    ];
-    legacyKeys.forEach(([oldKey, newKey]) => {
-      const oldVal = localStorage.getItem(oldKey);
-      if (oldVal && !localStorage.getItem(newKey)) {
-        localStorage.setItem(newKey, oldVal);
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && !key.startsWith('prebogo_') && !key.startsWith('firebase')) {
+        keysToRemove.push(key);
       }
-      localStorage.removeItem(oldKey);
-    });
-
-    [
-      'abogo_users_prod_v1',
-      'abogo_attendances_prod_v1',
-      'abogo_leaves_prod_v1',
-      'abogo_config_prod_v1',
-      'abogo_notifications_prod_v1',
-      'abogo_attendances',
-      'abogo_leaves',
-      'abogo_users',
-    ].forEach(key => localStorage.removeItem(key));
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
   }
 } catch {
   // ignore
@@ -92,8 +74,19 @@ export async function fetchUsers(): Promise<UserProfile[]> {
     const snap = await getDocs(collection(db, 'users'));
     if (!snap.empty) {
       const users: UserProfile[] = [];
-      snap.forEach(d => {
+      for (const d of snap.docs) {
         let u = d.data() as UserProfile;
+        // Purge dummy test account if found in Firestore
+        if (
+          d.id === 'user_guru_dummy' ||
+          u.id === 'user_guru_dummy' ||
+          u.email?.includes('dummy') ||
+          u.name?.toLowerCase().includes('uji coba')
+        ) {
+          deleteDoc(doc(db, 'users', d.id)).catch(() => {});
+          continue;
+        }
+
         // Auto-correct headmaster name if previously saved
         if (u.role === 'kepala_sekolah' && (u.name.includes('Maria') || !u.name.includes('Fransiscus'))) {
           u = {
@@ -104,25 +97,17 @@ export async function fetchUsers(): Promise<UserProfile[]> {
           setDoc(doc(db, 'users', u.id), u).catch(() => {});
         }
         users.push(u);
-      });
-
-      // Ensure 1 dummy user account is present in Firestore and local state
-      const hasDummy = users.some(u => u.id === 'user_guru_dummy' || u.email === 'dummy.guru@sdbogota.sch.id');
-      if (!hasDummy) {
-        const dummyUser = INITIAL_USERS.find(u => u.id === 'user_guru_dummy');
-        if (dummyUser) {
-          users.push(dummyUser);
-          setDoc(doc(db, 'users', dummyUser.id), dummyUser).catch(() => {});
-        }
       }
 
       localStorage.setItem(LS_USERS, JSON.stringify(users));
       return users;
     } else {
-      // Seed initial users into Firestore
+      // Seed initial users into Firestore (strictly official staff only, no dummy accounts)
       for (const u of INITIAL_USERS) {
         setDoc(doc(db, 'users', u.id), u).catch(() => {});
       }
+      localStorage.setItem(LS_USERS, JSON.stringify(INITIAL_USERS));
+      return INITIAL_USERS;
     }
   } catch (err) {
     handleFirestoreError(err, OperationType.LIST, 'users', auth.currentUser);
@@ -132,16 +117,18 @@ export async function fetchUsers(): Promise<UserProfile[]> {
   const stored = localStorage.getItem(LS_USERS);
   if (stored) {
     const parsed = JSON.parse(stored) as UserProfile[];
-    const sanitized = parsed.map(u =>
-      u.role === 'kepala_sekolah' && u.name.includes('Maria')
-        ? { ...u, name: 'Fransiscus Xaverius Suhari Irawan, S.E.' }
-        : u
-    );
-    const hasDummy = sanitized.some(u => u.id === 'user_guru_dummy');
-    if (!hasDummy) {
-      const dummyUser = INITIAL_USERS.find(u => u.id === 'user_guru_dummy');
-      if (dummyUser) sanitized.push(dummyUser);
-    }
+    const sanitized = parsed
+      .filter(
+        u =>
+          u.id !== 'user_guru_dummy' &&
+          !u.email?.includes('dummy') &&
+          !u.name?.toLowerCase().includes('uji coba')
+      )
+      .map(u =>
+        u.role === 'kepala_sekolah' && u.name.includes('Maria')
+          ? { ...u, name: 'Fransiscus Xaverius Suhari Irawan, S.E.' }
+          : u
+      );
     return sanitized;
   }
   localStorage.setItem(LS_USERS, JSON.stringify(INITIAL_USERS));
@@ -280,13 +267,41 @@ export async function saveSchoolConfig(config: SchoolConfig): Promise<void> {
   }
 }
 
-// Purge all dummy data from Firestore and local state
+// Purge all dummy data and test accounts from Firestore and local state
 export async function purgeAllDummyData(): Promise<void> {
   localStorage.setItem(LS_ATTENDANCES, JSON.stringify([]));
   localStorage.setItem(LS_LEAVES, JSON.stringify([]));
   localStorage.setItem(LS_NOTIFS, JSON.stringify([]));
 
+  // Purge dummy user from localStorage
+  const localUsersRaw = localStorage.getItem(LS_USERS);
+  if (localUsersRaw) {
+    try {
+      const parsed = JSON.parse(localUsersRaw) as UserProfile[];
+      const cleaned = parsed.filter(
+        u => u.id !== 'user_guru_dummy' && !u.email?.includes('dummy') && !u.name?.toLowerCase().includes('uji coba')
+      );
+      localStorage.setItem(LS_USERS, JSON.stringify(cleaned));
+    } catch {
+      // ignore
+    }
+  }
+
   try {
+    // Purge dummy user accounts from Firestore
+    const snapUsers = await getDocs(collection(db, 'users'));
+    for (const d of snapUsers.docs) {
+      const uData = d.data() as UserProfile;
+      if (
+        d.id === 'user_guru_dummy' ||
+        d.id.includes('dummy') ||
+        uData.email?.includes('dummy') ||
+        uData.name?.toLowerCase().includes('uji coba')
+      ) {
+        await deleteDoc(doc(db, 'users', d.id));
+      }
+    }
+
     const snapAtt = await getDocs(collection(db, 'attendances'));
     for (const d of snapAtt.docs) {
       const data = d.data() as AttendanceRecord;

@@ -114,7 +114,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 hidden sm:block">
-                Absensi Online Geofence & Verifikasi Wajah
+                Presensi Online Geofence & Verifikasi Wajah
               </p>
             </div>
           </div>

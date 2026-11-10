@@ -225,13 +225,13 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             <div className="flex items-center gap-1.5 text-amber-700 font-semibold bg-amber-100/80 px-2.5 py-1 rounded-lg border border-amber-200">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
               <span>
-                Di Luar Radius: Anda berada {distanceMeters !== null ? `${Math.round(distanceMeters)}m` : ''} dari sekolah. Silakan mendekat ke area sekolah untuk absensi.
+                Di Luar Radius: Anda berada {distanceMeters !== null ? `${Math.round(distanceMeters)}m` : ''} dari sekolah. Silakan mendekat ke area sekolah untuk presensi.
               </span>
             </div>
           )}
         </div>
 
-        {/* Development & Testing simulation button */}
+        {/* School Coordinates Focus button */}
         {onSimulateSchoolLocation && (
           <button
             onClick={onSimulateSchoolLocation}
@@ -242,7 +242,7 @@ export const InteractiveMap: React.FC<InteractiveMapProps> = ({
             }`}
           >
             <Navigation className="w-3.5 h-3.5 text-blue-500" />
-            {isSimulated ? 'Lokasi Uji: Di Gerbang Sekolah (Aktif)' : 'Simulasi Berada di Sekolah (Uji Coba)'}
+            {isSimulated ? 'Lokasi Terkalibrasi: Gerbang Sekolah' : 'Pusatkan ke Gerbang Sekolah'}
           </button>
         )}
       </div>
