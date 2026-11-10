@@ -156,6 +156,25 @@ export async function saveUser(user: UserProfile): Promise<void> {
   }
 }
 
+export async function saveUsersBatch(usersToSave: UserProfile[]): Promise<void> {
+  if (usersToSave.length === 0) return;
+  const existing = await fetchUsers();
+  const map = new Map<string, UserProfile>();
+  existing.forEach(u => map.set(u.id, u));
+  usersToSave.forEach(u => map.set(u.id, u));
+  const updated = Array.from(map.values());
+  localStorage.setItem(LS_USERS, JSON.stringify(updated));
+
+  // Sync to Firestore in parallel
+  try {
+    await Promise.all(
+      usersToSave.map(u => setDoc(doc(db, 'users', u.id), u))
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, 'users/batch', auth.currentUser);
+  }
+}
+
 export async function removeUser(userId: string): Promise<void> {
   const existing = await fetchUsers();
   const updated = existing.filter(u => u.id !== userId);
