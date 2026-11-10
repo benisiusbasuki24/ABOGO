@@ -35,7 +35,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LS_ACTIVE_SESSION = 'abogo_active_session_uid';
+const LS_ACTIVE_SESSION = 'prebogo_active_session_uid';
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     async function initAuth() {
       try {
         const users = await fetchUsers();
-        const savedUid = localStorage.getItem(LS_ACTIVE_SESSION);
+        const savedUid = localStorage.getItem(LS_ACTIVE_SESSION) || localStorage.getItem('abogo_active_session_uid');
 
         // Check Firebase Auth state
         onAuthStateChanged(auth, async fbUser => {
@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               const adminProfile: UserProfile = {
                 id: fbUser.uid,
                 email: fbUser.email,
-                name: fbUser.displayName || 'Administrator Utama SABOGOT',
+                name: fbUser.displayName || 'Administrator Utama PREBOGO',
                 nip: '198501152010011001',
                 role: 'superadmin',
                 jobTitle: 'Superadmin Sistem & TI',
@@ -187,7 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     if (!user) {
-      return { success: false, message: 'NIP, Username, atau Email tidak terdaftar dalam sistem SABOGOT.' };
+      return { success: false, message: 'NIP, Username, atau Email tidak terdaftar dalam sistem PREBOGO.' };
     }
 
     if (user.status !== 'active') {

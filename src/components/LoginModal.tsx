@@ -166,7 +166,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       if (success) {
         if (onClose) onClose();
       } else {
-        setErrorMsg('Email Google Anda belum terdaftar dalam sistem SABOGOT SD BOPKRI Gondolayu.');
+        setErrorMsg('Email Google Anda belum terdaftar dalam sistem PREBOGO SD BOPKRI Gondolayu.');
       }
     } catch {
       setErrorMsg('Gagal masuk dengan Google.');
@@ -282,7 +282,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   PORTAL RESMI ABSENSI
                 </span>
                 <h1 className="text-2xl font-black tracking-tight text-white">
-                  SABOGOT
+                  PREBOGO
                 </h1>
               </div>
             </div>
@@ -339,7 +339,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 AUTENTIKASI RESMI
               </span>
               <h3 className="text-xl font-black text-slate-900 mt-0.5">
-                Masuk ke Portal SABOGOT
+                Masuk ke Portal PREBOGO
               </h3>
               <p className="text-xs text-slate-500 mt-1">
                 Pilih metode masuk yang diinginkan: Biometrik Sensor/Wajah, NIP & Password, atau Google.
@@ -638,7 +638,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   className="w-full mt-2 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-blue-600/20 transition-all cursor-pointer"
                 >
                   <LogIn className="w-4 h-4" />
-                  <span>{isLoading ? 'Memverifikasi Kredensial...' : 'Masuk ke Portal SABOGOT'}</span>
+                  <span>{isLoading ? 'Memverifikasi Kredensial...' : 'Masuk ke Portal PREBOGO'}</span>
                 </button>
               </form>
             )}

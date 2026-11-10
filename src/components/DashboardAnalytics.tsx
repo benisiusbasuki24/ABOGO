@@ -458,7 +458,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
 
             {/* School Profile Summary Card */}
             <div className="mt-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1.5 text-xs">
-              <div className="font-bold text-slate-800 text-xs">Informasi Jam Operasional SABOGOT:</div>
+              <div className="font-bold text-slate-800 text-xs">Informasi Jam Operasional PREBOGO:</div>
               <div className="flex justify-between text-slate-600">
                 <span>Jam Masuk:</span>
                 <span className="font-semibold text-slate-800">{schoolConfig.workStartTime} WIB</span>

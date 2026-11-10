@@ -183,7 +183,7 @@ function AppContent() {
         <div className="w-14 h-14 rounded-2xl bg-blue-600/20 border border-blue-500/40 flex items-center justify-center animate-pulse mb-3 shadow-lg">
           <GraduationCap className="w-7 h-7 text-blue-400" />
         </div>
-        <div className="font-extrabold text-base tracking-wide text-white">Memuat Sistem SABOGOT...</div>
+        <div className="font-extrabold text-base tracking-wide text-white">Memuat Sistem PREBOGO...</div>
         <div className="text-xs text-blue-200 mt-1">SD BOPKRI Gondolayu Yogyakarta</div>
       </div>
     );
@@ -386,7 +386,7 @@ function AppContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="font-bold text-slate-800">
-              SABOGOT &bull; Absensi Online SD BOPKRI Gondolayu
+              PREBOGO &bull; Absensi Online SD BOPKRI Gondolayu
             </div>
             <p className="text-[11px] text-slate-400">
               YAYASAN BOPKRI YOGYAKARTA &bull; Dikembangkan dengan Geofencing 100m, Verifikasi Wajah & Sinkronisasi Firebase.

@@ -147,7 +147,7 @@ export function exportMonthlyReportToPDF(
   doc.text(`NIP. ${schoolConfig.headmasterNip || '197204121998032004'}`, 210, signatureY + 33);
 
   // Save the PDF
-  doc.save(`Rekap_Absensi_SABOGOT_${monthName}_${year}.pdf`);
+  doc.save(`Rekap_Absensi_PREBOGO_${monthName}_${year}.pdf`);
 }
 
 export function exportMonthlyReportToExcel(
@@ -160,7 +160,7 @@ export function exportMonthlyReportToExcel(
     ['YAYASAN BOPKRI YOGYAKARTA'],
     [schoolConfig.schoolName || 'SD BOPKRI GONDOLAYU'],
     [`NPSN: ${schoolConfig.npsn || '20403197'} | ${schoolConfig.address}`],
-    ['LAPORAN REKAPITULASI KEHADIRAN BULANAN PEGAWAI (PORTAL SABOGOT)'],
+    ['LAPORAN REKAPITULASI KEHADIRAN BULANAN PEGAWAI (PORTAL PREBOGO)'],
     [`Bulan: ${monthName} ${year}`],
     [], // empty row
     [
@@ -217,5 +217,5 @@ export function exportMonthlyReportToExcel(
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, `Rekap_${monthName}`);
 
-  XLSX.writeFile(wb, `Rekap_Absensi_SABOGOT_${monthName}_${year}.xlsx`);
+  XLSX.writeFile(wb, `Rekap_Absensi_PREBOGO_${monthName}_${year}.xlsx`);
 }

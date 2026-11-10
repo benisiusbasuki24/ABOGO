@@ -21,7 +21,7 @@ export const INITIAL_USERS: UserProfile[] = [
   {
     id: 'user_superadmin',
     email: 'ppdb.sdbogota@gmail.com',
-    name: 'Administrator Utama SABOGOT',
+    name: 'Administrator Utama PREBOGO',
     nip: '198501152010011001',
     role: 'superadmin',
     jobTitle: 'Superadmin Sistem & Pengelola TI',

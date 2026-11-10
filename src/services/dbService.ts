@@ -46,15 +46,31 @@ export function calculateDistanceMeters(
 }
 
 // Local storage fallback keys (Production Clean State v2)
-const LS_USERS = 'abogo_users_v2';
-const LS_ATTENDANCES = 'abogo_attendances_v2';
-const LS_LEAVES = 'abogo_leaves_v2';
-const LS_CONFIG = 'abogo_config_v2';
-const LS_NOTIFS = 'abogo_notifications_v2';
+const LS_USERS = 'prebogo_users_v2';
+const LS_ATTENDANCES = 'prebogo_attendances_v2';
+const LS_LEAVES = 'prebogo_leaves_v2';
+const LS_CONFIG = 'prebogo_config_v2';
+const LS_NOTIFS = 'prebogo_notifications_v2';
 
-// Purge old local storage cache keys on load
+// Migrate any data from legacy abogo keys if found and purge old local storage cache keys
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
+    // Smooth migration from abogo_* to prebogo_*
+    const legacyKeys: [string, string][] = [
+      ['abogo_users_v2', LS_USERS],
+      ['abogo_attendances_v2', LS_ATTENDANCES],
+      ['abogo_leaves_v2', LS_LEAVES],
+      ['abogo_config_v2', LS_CONFIG],
+      ['abogo_notifications_v2', LS_NOTIFS],
+    ];
+    legacyKeys.forEach(([oldKey, newKey]) => {
+      const oldVal = localStorage.getItem(oldKey);
+      if (oldVal && !localStorage.getItem(newKey)) {
+        localStorage.setItem(newKey, oldVal);
+      }
+      localStorage.removeItem(oldKey);
+    });
+
     [
       'abogo_users_prod_v1',
       'abogo_attendances_prod_v1',

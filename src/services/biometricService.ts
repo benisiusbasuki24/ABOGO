@@ -2,8 +2,8 @@ import { UserProfile } from '../types';
 import { fetchUsers, saveUser } from './dbService';
 
 // Storage keys for biometric binding
-const LS_BIOMETRIC_REGISTRY = 'sabogot_biometric_registry_v1';
-const LS_LAST_BIOMETRIC_USER = 'sabogot_last_biometric_user';
+const LS_BIOMETRIC_REGISTRY = 'prebogo_biometric_registry_v1';
+const LS_LAST_BIOMETRIC_USER = 'prebogo_last_biometric_user';
 
 export interface BiometricRegistration {
   userId: string;
@@ -72,7 +72,7 @@ function base64ToBuffer(base64: string): ArrayBuffer {
 // Get all local biometric registrations on this device
 export function getLocalBiometricRegistry(): BiometricRegistration[] {
   try {
-    const data = localStorage.getItem(LS_BIOMETRIC_REGISTRY);
+    const data = localStorage.getItem(LS_BIOMETRIC_REGISTRY) || localStorage.getItem('sabogot_biometric_registry_v1');
     if (!data) return [];
     return JSON.parse(data);
   } catch {
@@ -114,7 +114,7 @@ export async function registerDeviceBiometric(user: UserProfile): Promise<{
           publicKey: {
             challenge,
             rp: {
-              name: 'SABOGOT - SD BOPKRI Gondolayu',
+              name: 'PREBOGO - SD BOPKRI Gondolayu',
               id: window.location.hostname,
             },
             user: {
