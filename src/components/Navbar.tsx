@@ -16,6 +16,7 @@ import {
   UserCheck,
   Menu,
   X,
+  Fingerprint,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { PortalNotification, SchoolConfig, UserProfile } from '../types';
@@ -44,12 +45,22 @@ export const Navbar: React.FC<NavbarProps> = ({
   allUsers,
   pendingLeavesCount = 0,
 }) => {
-  const { currentUser, logout, isSuperAdmin, isKepalaSekolah, canApproveLeaves } = useAuth();
+  const {
+    currentUser,
+    logout,
+    isSuperAdmin,
+    isKepalaSekolah,
+    canApproveLeaves,
+    registerBiometric,
+    removeBiometric,
+    registeredBiometricUser,
+  } = useAuth();
   const [timeStr, setTimeStr] = useState<string>('');
   const [dateStr, setDateStr] = useState<string>('');
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [bioFeedback, setBioFeedback] = useState<string | null>(null);
 
   // Digital WIB Clock
   useEffect(() => {
@@ -305,6 +316,51 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <Settings className="w-4 h-4 text-blue-600" />
                           <span>Pengaturan Geofence & Jam Kerja</span>
                         </button>
+                      )}
+
+                      {/* Device Biometric Registration / Toggle */}
+                      {registeredBiometricUser?.userId === currentUser.id ? (
+                        <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-[11px]">
+                              <Fingerprint className="w-4 h-4 text-emerald-600" />
+                              <span>Biometrik Aktif</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await removeBiometric();
+                                setBioFeedback('Biometrik dinonaktifkan di perangkat ini.');
+                                setTimeout(() => setBioFeedback(null), 3000);
+                              }}
+                              className="text-[10px] text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
+                            >
+                              Hapus
+                            </button>
+                          </div>
+                          <span className="text-[10px] text-emerald-700 block mt-0.5">
+                            Perangkat ini dapat login 1 sentuhan.
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const res = await registerBiometric();
+                            setBioFeedback(res.message);
+                            setTimeout(() => setBioFeedback(null), 3500);
+                          }}
+                          className="w-full text-left px-2.5 py-2 rounded-xl hover:bg-emerald-50 text-emerald-700 flex items-center gap-2 cursor-pointer font-medium"
+                        >
+                          <Fingerprint className="w-4 h-4 text-emerald-600" />
+                          <span>Daftarkan Biometrik Perangkat</span>
+                        </button>
+                      )}
+
+                      {bioFeedback && (
+                        <div className="px-2.5 py-1 text-[10px] rounded-lg bg-blue-50 text-blue-700 font-medium">
+                          {bioFeedback}
+                        </div>
                       )}
 
                       <button

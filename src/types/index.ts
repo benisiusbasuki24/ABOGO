@@ -13,6 +13,9 @@ export interface UserProfile {
   password?: string; // For NIP & Password login credential
   annualLeaveQuota?: number; // default: 12 days
   annualLeaveUsed?: number; // default: 0
+  biometricEnabled?: boolean;
+  biometricCredentialId?: string;
+  biometricRegisteredAt?: string;
   createdAt: string;
   updatedAt: string;
 }

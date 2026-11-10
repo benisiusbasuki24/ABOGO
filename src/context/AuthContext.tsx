@@ -3,6 +3,14 @@ import { GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateC
 import { auth } from '../firebase/config';
 import { UserProfile } from '../types';
 import { fetchUsers, saveUser } from '../services/dbService';
+import {
+  checkBiometricSupport,
+  registerDeviceBiometric,
+  authenticateWithBiometric,
+  removeDeviceBiometric,
+  getLastBiometricUser,
+  BiometricRegistration,
+} from '../services/biometricService';
 
 interface AuthContextType {
   currentUser: UserProfile | null;
@@ -10,6 +18,12 @@ interface AuthContextType {
   isLoading: boolean;
   loginWithGoogle: () => Promise<boolean>;
   loginWithNip: (nipOrEmail: string, pass: string) => Promise<{ success: boolean; message?: string }>;
+  loginWithBiometric: (targetNipOrId?: string) => Promise<{ success: boolean; message?: string }>;
+  registerBiometric: () => Promise<{ success: boolean; message: string }>;
+  removeBiometric: () => Promise<void>;
+  isBiometricSupported: boolean;
+  registeredBiometricUser: BiometricRegistration | null;
+  refreshBiometricStatus: () => void;
   switchDemoUser: (userId: string) => Promise<void>;
   logout: () => Promise<void>;
   isSuperAdmin: boolean;
@@ -27,6 +41,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FbUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+  const [registeredBiometricUser, setRegisteredBiometricUser] = useState<BiometricRegistration | null>(null);
+
+  const refreshBiometricStatus = () => {
+    setRegisteredBiometricUser(getLastBiometricUser());
+  };
+
+  useEffect(() => {
+    checkBiometricSupport().then(res => {
+      setIsBiometricSupported(res.supported);
+    });
+    refreshBiometricStatus();
+  }, [currentUser]);
 
   const refreshUserData = async () => {
     if (!currentUser) return;
@@ -184,6 +211,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
+  const loginWithBiometric = async (targetNipOrId?: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const res = await authenticateWithBiometric(targetNipOrId);
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        localStorage.setItem(LS_ACTIVE_SESSION, res.user.id);
+        refreshBiometricStatus();
+        return { success: true, message: res.message };
+      }
+      return { success: false, message: res.message };
+    } catch (err: unknown) {
+      const error = err as Error;
+      return { success: false, message: error.message || 'Gagal login biometrik' };
+    }
+  };
+
+  const registerBiometric = async (): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) return { success: false, message: 'Harus masuk terlebih dahulu untuk mengaktifkan biometrik' };
+    const res = await registerDeviceBiometric(currentUser);
+    if (res.success) {
+      await refreshUserData();
+      refreshBiometricStatus();
+    }
+    return res;
+  };
+
+  const removeBiometric = async (): Promise<void> => {
+    if (!currentUser) return;
+    await removeDeviceBiometric(currentUser.id);
+    await refreshUserData();
+    refreshBiometricStatus();
+  };
+
   const switchDemoUser = async (_userId: string) => {
     // Deprecated: Strict manual login enforced
   };
@@ -211,6 +271,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         loginWithGoogle,
         loginWithNip,
+        loginWithBiometric,
+        registerBiometric,
+        removeBiometric,
+        isBiometricSupported,
+        registeredBiometricUser,
+        refreshBiometricStatus,
         switchDemoUser,
         logout,
         isSuperAdmin,

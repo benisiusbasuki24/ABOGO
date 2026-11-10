@@ -48,6 +48,18 @@
           "enum": ["active", "inactive"],
           "description": "Status keaktifan pegawai"
         },
+        "biometricEnabled": {
+          "type": "boolean",
+          "description": "Menunjukkan apakah login biometrik (Fingerprint/Face ID/WebAuthn) telah diaktifkan"
+        },
+        "biometricCredentialId": {
+          "type": "string",
+          "description": "ID kredensial biometrik WebAuthn terdaftar"
+        },
+        "biometricRegisteredAt": {
+          "type": "string",
+          "description": "Waktu pendaftaran biometrik perangkat"
+        },
         "createdAt": {
           "type": "string",
           "description": "Waktu pembuatan akun"
