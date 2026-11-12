@@ -125,7 +125,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
               <div className="space-y-1">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Sudah Absen Masuk ({myTodayRecord.checkInTime} WIB)
+                  Sudah Presensi Masuk ({myTodayRecord.checkInTime} WIB)
                 </div>
                 {myTodayRecord.checkOutTime ? (
                   <div className="text-[11px] text-blue-200">
@@ -136,7 +136,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                     onClick={onOpenAttendanceModal}
                     className="w-full mt-2 py-2 px-4 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs shadow-lg transition-all cursor-pointer"
                   >
-                    Absen Pulang Sekarang
+                    Presensi Pulang (14:30)
                   </button>
                 )}
               </div>

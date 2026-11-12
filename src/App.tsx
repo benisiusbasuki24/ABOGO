@@ -26,6 +26,7 @@ import {
   subscribeToAttendances,
   subscribeToLeaveRequests,
   subscribeToNotifications,
+  subscribeToUsers,
   purgeAllDummyData,
 } from './services/dbService';
 import { DEFAULT_SCHOOL_CONFIG } from './services/seedData';
@@ -88,6 +89,11 @@ function AppContent() {
   useEffect(() => {
     loadInitialData();
 
+    // Subscribe to live users from Firestore
+    const unsubUsers = subscribeToUsers(updatedUsers => {
+      setUsers(updatedUsers);
+    });
+
     // Subscribe to live attendances from Firestore
     const unsubAttendances = subscribeToAttendances(updatedList => {
       setAttendances(updatedList);
@@ -104,6 +110,7 @@ function AppContent() {
     });
 
     return () => {
+      unsubUsers();
       unsubAttendances();
       unsubLeaves();
       unsubNotifs();
@@ -125,7 +132,10 @@ function AppContent() {
 
   const requestRealGps = useCallback(() => {
     if (!navigator.geolocation) {
-      setGpsError('Peramban Anda tidak mendukung sensor GPS.');
+      setGpsError('Peramban atau smartphone Anda tidak mendukung sensor GPS.');
+      setUserCoords(null);
+      setDistanceMeters(null);
+      setIsWithinRadius(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -136,20 +146,40 @@ function AppContent() {
       },
       err => {
         console.warn('GPS permission denied or unavailable', err);
-        setGpsError('Izin GPS tidak diberikan. Klik tombol Simulasi di bawah untuk menguji dalam radius.');
-        // Default to a nearby point at SD BOPKRI Gondolayu for seamless experience
-        updatePosition(-7.782875, 110.367135);
-        setIsSimulatedLocation(true);
+        setGpsError('GPS Belum Aktif di Handphone: Anda wajib mengaktifkan GPS / Layanan Lokasi di smartphone Anda dan mengizinkan peramban mengakses lokasi untuk presensi resmi SD BOPKRI Gondolayu.');
+        setUserCoords(null);
+        setDistanceMeters(null);
+        setIsWithinRadius(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
     );
   }, [updatePosition]);
 
+  // Continuous watchPosition so when the user turns on GPS in phone settings, it immediately activates
   useEffect(() => {
     requestRealGps();
-  }, [requestRealGps]);
 
-  // Toggle simulate within school radius (< 100m)
+    if (navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
+        pos => {
+          setIsSimulatedLocation(false);
+          setGpsError(null);
+          updatePosition(pos.coords.latitude, pos.coords.longitude);
+        },
+        err => {
+          console.warn('GPS watch error', err);
+          setGpsError('GPS Belum Aktif di Handphone: Anda wajib mengaktifkan GPS pada smartphone.');
+          setUserCoords(null);
+          setDistanceMeters(null);
+          setIsWithinRadius(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+      return () => navigator.geolocation.clearWatch(watchId);
+    }
+  }, [requestRealGps, updatePosition]);
+
+  // Toggle simulate within school radius (< 100m) - ONLY available for superadmin testing
   const handleSimulateSchoolLocation = () => {
     if (isSimulatedLocation && isWithinRadius) {
       // Toggle to outside radius for testing warning (e.g. 250 meters away)
@@ -239,49 +269,64 @@ function AppContent() {
         <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="flex items-center gap-2.5">
             <div
-              className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold shrink-0 ${
-                isWithinRadius ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+              className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold shrink-0 ${
+                !userCoords || gpsError
+                  ? 'bg-rose-100 text-rose-700'
+                  : isWithinRadius
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-amber-100 text-amber-700'
               }`}
             >
               <Compass className="w-4 h-4" />
             </div>
             <div>
               <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                Status GPS & Geofence:
-                {isWithinRadius ? (
-                  <span className="text-emerald-600 font-extrabold flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    Dalam Radius ({distanceMeters !== null ? `${Math.round(distanceMeters)}m` : '0m'})
-                  </span>
-                ) : (
+                Status GPS Smartphone:
+                {!userCoords || gpsError ? (
                   <span className="text-rose-600 font-extrabold flex items-center gap-1">
                     <AlertTriangle className="w-3.5 h-3.5" />
-                    Di Luar Radius ({distanceMeters !== null ? `${Math.round(distanceMeters)}m` : '0m'})
+                    Nonaktif / Belum Terdeteksi (Wajib Aktif)
+                  </span>
+                ) : isWithinRadius ? (
+                  <span className="text-emerald-600 font-extrabold flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Aktif &bull; Dalam Radius ({Math.round(distanceMeters || 0)}m dari gerbang)
+                  </span>
+                ) : (
+                  <span className="text-amber-600 font-extrabold flex items-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    Aktif &bull; Di Luar Radius ({Math.round(distanceMeters || 0)}m dari gerbang)
                   </span>
                 )}
               </span>
               <p className="text-[11px] text-slate-500">
-                Pusat Presensi: SD BOPKRI Gondolayu ({schoolConfig.latitude.toFixed(5)}, {schoolConfig.longitude.toFixed(5)})
+                Pusat Presensi: SD BOPKRI Gondolayu &bull; Jam Masuk: {schoolConfig.workStartTime} WIB &bull; Jam Pulang: {schoolConfig.workEndTime} WIB
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleSimulateSchoolLocation}
-              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                isWithinRadius
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700'
-              }`}
+              onClick={requestRealGps}
+              className="px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <MapPin className="w-3.5 h-3.5" />
-              <span>
-                {isWithinRadius
-                  ? 'Simulasi: Posisi di Sekolah (25m)'
-                  : 'Klik untuk Simulasi Masuk Radius'}
-              </span>
+              <MapPin className="w-3.5 h-3.5 text-blue-600" />
+              <span>Cek / Refresh GPS</span>
             </button>
+
+            {isSuperAdmin && (
+              <button
+                onClick={handleSimulateSchoolLocation}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isWithinRadius
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
+                }`}
+                title="Fitur Khusus Pengujian Superadmin"
+              >
+                <span>{isWithinRadius ? 'Simulasi: 25m' : 'Simulasi: Radius'}</span>
+              </button>
+            )}
 
             {currentUser && (
               <button
@@ -291,8 +336,8 @@ function AppContent() {
                 <Camera className="w-3.5 h-3.5" />
                 <span>
                   {existingTodayRecord && existingTodayRecord.checkInTime && !existingTodayRecord.checkOutTime
-                    ? 'Absen Pulang'
-                    : 'Absen Masuk'}
+                    ? 'Absen Pulang (14:30)'
+                    : 'Absen Masuk (07:00)'}
                 </span>
               </button>
             )}
@@ -410,6 +455,8 @@ function AppContent() {
           userCoords={userCoords}
           distanceMeters={distanceMeters}
           isWithinRadius={isWithinRadius}
+          gpsError={gpsError}
+          onRefreshGps={requestRealGps}
           existingTodayRecord={existingTodayRecord}
           onSuccess={handleAttendanceSuccess}
         />

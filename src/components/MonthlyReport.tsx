@@ -111,9 +111,9 @@ export const MonthlyReport: React.FC<MonthlyReportProps> = ({
     return monthlySummaries.filter(s => {
       const matchRole = roleFilter === 'all' || s.userRole === roleFilter;
       const matchSearch =
-        s.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.userNip.includes(searchTerm) ||
-        s.jobTitle.toLowerCase().includes(searchTerm.toLowerCase());
+        String(s.userName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        String(s.userNip || '').includes(searchTerm) ||
+        String(s.jobTitle || '').toLowerCase().includes(searchTerm.toLowerCase());
       return matchRole && matchSearch;
     });
   }, [monthlySummaries, roleFilter, searchTerm]);

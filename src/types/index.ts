@@ -22,6 +22,7 @@ export interface UserProfile {
 
 export type AttendanceStatus = 'hadir' | 'terlambat' | 'izin' | 'sakit' | 'alpa';
 export type CheckInStatus = 'tepat_waktu' | 'terlambat';
+export type CheckOutStatus = 'sesuai_jadwal' | 'pulang_awal';
 
 export interface AttendanceRecord {
   id: string;
@@ -38,6 +39,8 @@ export interface AttendanceRecord {
   checkInLng?: number;
   checkInPhoto?: string; // Base64 data URL
   checkOutTime?: string; // HH:mm:ss
+  checkOutStatus?: CheckOutStatus;
+  checkOutEarlyMinutes?: number;
   checkOutDistance?: number;
   checkOutLat?: number;
   checkOutLng?: number;

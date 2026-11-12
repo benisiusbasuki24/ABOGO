@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, RefreshCw, CheckCircle, AlertCircle, X, ShieldAlert, Sparkles, MapPin, Clock } from 'lucide-react';
+import { Camera, RefreshCw, CheckCircle, AlertCircle, X, ShieldAlert, Sparkles, MapPin, Clock, Navigation } from 'lucide-react';
 import { UserProfile, SchoolConfig, AttendanceRecord, PortalNotification } from '../types';
 import { recordAttendance, addNotification } from '../services/dbService';
 
@@ -11,6 +11,8 @@ interface AttendanceModalProps {
   userCoords: { lat: number; lng: number } | null;
   distanceMeters: number | null;
   isWithinRadius: boolean;
+  gpsError?: string | null;
+  onRefreshGps?: () => void;
   existingTodayRecord?: AttendanceRecord;
   onSuccess: () => void;
 }
@@ -23,6 +25,8 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
   userCoords,
   distanceMeters,
   isWithinRadius,
+  gpsError,
+  onRefreshGps,
   existingTodayRecord,
   onSuccess,
 }) => {
@@ -35,10 +39,19 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isFaceAligned, setIsFaceAligned] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  // Live ticking clock (synchronized with device / Indonesian WIB)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Determine if checkin or checkout
   useEffect(() => {
@@ -137,16 +150,29 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Calculate late time
-  const now = new Date();
+  // Realtime Time Calculation & Synchronization
+  const now = currentTime;
   const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   const [currentHour, currentMinute] = timeStr.split(':').map(Number);
-  const [lateHour, lateMinute] = (schoolConfig.lateThresholdTime || '07:15').split(':').map(Number);
-
   const currentTotalMins = currentHour * 60 + currentMinute;
+
+  // Jam Kehadiran (Masuk) synchronization
+  const [lateHour, lateMinute] = (schoolConfig.lateThresholdTime || '07:15').split(':').map(Number);
   const lateTotalMins = lateHour * 60 + lateMinute;
   const isLate = mode === 'checkin' && currentTotalMins > lateTotalMins;
   const lateMinutes = isLate ? currentTotalMins - lateTotalMins : 0;
+
+  // Jam Kepulangan (Pulang) synchronization
+  const isFriday = now.getDay() === 5;
+  const officialEndTime = isFriday ? (schoolConfig.workEndTimeFriday || '14:30') : (schoolConfig.workEndTime || '14:30');
+  const [endHour, endMinute] = officialEndTime.split(':').map(Number);
+  const officialEndMins = endHour * 60 + endMinute;
+  const isEarlyCheckout = mode === 'checkout' && currentTotalMins < officialEndMins;
+  const earlyCheckoutMinutes = isEarlyCheckout ? officialEndMins - currentTotalMins : 0;
+
+  // GPS Enforcement
+  const isGpsActive = !!userCoords && !gpsError;
+  const canSubmit = isGpsActive && isWithinRadius && !!capturedPhoto && !isSubmitting;
 
   // Capture face photo with geotag & watermark
   const handleCapturePhoto = () => {
@@ -169,11 +195,11 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
     const h = canvas.height;
 
     // Bottom dark gradient banner
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
     ctx.fillRect(0, h - 90, w, 90);
 
     // Top subtle banner
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
     ctx.fillRect(0, 0, w, 36);
 
     // Header text
@@ -200,13 +226,32 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
     ctx.fillText(`GPS: ${userCoords ? `${userCoords.lat.toFixed(5)}, ${userCoords.lng.toFixed(5)}` : 'Terdeteksi'} (${distText})`, 14, h - 25);
 
     // Status Badge on photo
-    const badgeText = mode === 'checkout' ? 'ABSEN PULANG' : (isLate ? `TERLAMBAT (+${lateMinutes}m)` : 'TEPAT WAKTU');
+    let badgeText = 'TEPAT WAKTU';
+    let badgeColor = '#10b981';
+    if (mode === 'checkout') {
+      if (isEarlyCheckout) {
+        badgeText = `PULANG AWAL (-${earlyCheckoutMinutes}m)`;
+        badgeColor = '#f59e0b';
+      } else {
+        badgeText = 'PULANG SESUAI JADWAL (14:30 WIB)';
+        badgeColor = '#3b82f6';
+      }
+    } else {
+      if (isLate) {
+        badgeText = `TERLAMBAT (+${lateMinutes}m)`;
+        badgeColor = '#f43f5e';
+      } else {
+        badgeText = 'TEPAT WAKTU (07:00-07:15 WIB)';
+        badgeColor = '#10b981';
+      }
+    }
+
     ctx.font = 'bold 12px "Plus Jakarta Sans", sans-serif';
     const textWidth = ctx.measureText(badgeText).width;
     const badgeX = w - textWidth - 28;
     const badgeY = h - 55;
 
-    ctx.fillStyle = mode === 'checkout' ? '#3b82f6' : (isLate ? '#f43f5e' : '#10b981');
+    ctx.fillStyle = badgeColor;
     ctx.beginPath();
     ctx.roundRect(badgeX, badgeY - 16, textWidth + 18, 26, 6);
     ctx.fill();
@@ -230,13 +275,18 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
   };
 
   const handleSubmitAttendance = async () => {
-    if (!capturedPhoto) {
-      alert('Silakan ambil foto verifikasi wajah terlebih dahulu.');
+    if (!isGpsActive) {
+      alert('Anda wajib mengaktifkan GPS pada handphone Anda untuk melakukan presensi resmi SD BOPKRI Gondolayu.');
       return;
     }
 
     if (!isWithinRadius) {
       alert(`Jarak Anda (${Math.round(distanceMeters || 0)}m) melebihi batas toleransi ${schoolConfig.radiusToleranceMeters}m dari SD BOPKRI Gondolayu.`);
+      return;
+    }
+
+    if (!capturedPhoto) {
+      alert('Silakan ambil foto verifikasi wajah terlebih dahulu.');
       return;
     }
 
@@ -276,7 +326,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
             senderId: currentUser.id,
             senderName: currentUser.name,
             title: `Keterlambatan: ${currentUser.name}`,
-            message: `${currentUser.name} (${currentUser.jobTitle}) melakukan presensi masuk pukul ${timeStr} WIB (Terlambat ${lateMinutes} menit). Catatan: ${notes || 'Tanpa keterangan'}`,
+            message: `${currentUser.name} (${currentUser.jobTitle}) presensi masuk pukul ${timeStr} WIB (Terlambat ${lateMinutes} menit). Catatan: ${notes || 'Tanpa catatan'}`,
             type: 'late_alert',
             read: false,
             createdAt: now.toISOString(),
@@ -288,6 +338,8 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
         const updatedRecord: AttendanceRecord = {
           ...(existingTodayRecord as AttendanceRecord),
           checkOutTime: timeStr,
+          checkOutStatus: isEarlyCheckout ? 'pulang_awal' : 'sesuai_jadwal',
+          checkOutEarlyMinutes: earlyCheckoutMinutes,
           checkOutDistance: distanceMeters !== null ? Math.round(distanceMeters * 10) / 10 : 0,
           checkOutLat: userCoords?.lat || schoolConfig.latitude,
           checkOutLng: userCoords?.lng || schoolConfig.longitude,
@@ -295,6 +347,22 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
           updatedAt: now.toISOString(),
         };
         await recordAttendance(updatedRecord);
+
+        // Early checkout alert for admins if leaving early
+        if (isEarlyCheckout) {
+          const earlyNotif: PortalNotification = {
+            id: `notif_early_${currentUser.id}_${Date.now()}`,
+            recipientId: 'all_admins',
+            senderId: currentUser.id,
+            senderName: currentUser.name,
+            title: `Pulang Lebih Awal: ${currentUser.name}`,
+            message: `${currentUser.name} (${currentUser.jobTitle}) melakukan presensi pulang pukul ${timeStr} WIB (${earlyCheckoutMinutes} menit sebelum jam resmi 14:30 WIB). Catatan: ${notes || 'Tanpa catatan'}`,
+            type: 'late_alert',
+            read: false,
+            createdAt: now.toISOString(),
+          };
+          await addNotification(earlyNotif);
+        }
       }
 
       stopCamera();
@@ -331,7 +399,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
               stopCamera();
               onClose();
             }}
-            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+            className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -339,60 +407,111 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
 
         {/* Body */}
         <div className="p-5 space-y-4">
-          {/* Status Bar */}
+          {/* Status Bar: Synchronized Digital Clock & Real GPS distance */}
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
               <Clock className="w-4 h-4 text-blue-600 shrink-0" />
               <div>
-                <span className="text-slate-500 block text-[11px]">Waktu Sekarang:</span>
-                <span className="font-bold text-slate-800 text-sm">{timeStr} WIB</span>
+                <span className="text-slate-500 block text-[11px]">Waktu Presensi (WIB):</span>
+                <span className="font-mono font-extrabold text-slate-800 text-sm">{timeStr}</span>
               </div>
             </div>
 
             <div className={`p-3 rounded-xl border flex items-center gap-2.5 ${
-              isWithinRadius
+              !isGpsActive
+                ? 'bg-rose-50 border-rose-300 text-rose-800'
+                : isWithinRadius
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                : 'bg-rose-50 border-rose-200 text-rose-800'
+                : 'bg-amber-50 border-amber-300 text-amber-800'
             }`}>
               <MapPin className="w-4 h-4 shrink-0" />
               <div>
-                <span className="block text-[11px] opacity-80">Jarak ke Sekolah:</span>
-                <span className="font-bold text-xs sm:text-sm">
-                  {distanceMeters !== null ? `${Math.round(distanceMeters)}m` : '0m'} ({isWithinRadius ? 'Valid &le;100m' : 'Di Luar 100m'})
+                <span className="block text-[11px] opacity-80">GPS Handphone:</span>
+                <span className="font-bold text-xs">
+                  {!isGpsActive
+                    ? 'GPS Nonaktif'
+                    : `${Math.round(distanceMeters || 0)}m (${isWithinRadius ? 'Dalam Radius' : 'Di Luar Radius'})`}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Late Warning Alert if applicable */}
-          {mode === 'checkin' && isLate && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-2.5 text-xs text-rose-800">
-              <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          {/* GPS MANDATORY WARNING BANNER */}
+          {!isGpsActive && (
+            <div className="p-3.5 rounded-xl bg-rose-50 border-2 border-rose-300 text-rose-900 text-xs space-y-2 animate-in fade-in">
+              <div className="flex items-start gap-2.5">
+                <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="font-bold text-rose-800 block text-xs">GPS Handphone Wajib Aktif!</strong>
+                  <p className="text-[11px] text-rose-700 leading-relaxed mt-0.5">
+                    Untuk melakukan presensi, Anda wajib mengaktifkan layanan lokasi (GPS) pada smartphone dan mengizinkan peramban mengakses titik koordinat Anda di SD BOPKRI Gondolayu.
+                  </p>
+                </div>
+              </div>
+
+              {onRefreshGps && (
+                <div className="pt-1 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={onRefreshGps}
+                    className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Aktifkan / Cek Ulang GPS</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Time Synchronization Details */}
+          {mode === 'checkin' ? (
+            <div className={`p-3 rounded-xl border flex items-start gap-2.5 text-xs ${
+              isLate ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-emerald-50 border-emerald-200 text-emerald-900'
+            }`}>
+              <Clock className={`w-4 h-4 shrink-0 mt-0.5 ${isLate ? 'text-amber-600' : 'text-emerald-600'}`} />
               <div>
-                <strong className="font-bold">Peringatan Keterlambatan: </strong>
-                Anda melakukan presensi lewat dari batas jam operasional ({schoolConfig.lateThresholdTime || '07:15'} WIB). Terlambat sekitar {lateMinutes} menit.
+                <strong className="font-bold">Sinkronisasi Jam Masuk: </strong>
+                Jam masuk resmi pukul <strong>{schoolConfig.workStartTime} WIB</strong> (Toleransi keterlambatan s/d <strong>{schoolConfig.lateThresholdTime} WIB</strong>).
+                {isLate ? (
+                  <span className="block text-amber-800 font-bold mt-0.5">
+                    Status: Terlambat {lateMinutes} menit dari jadwal toleransi.
+                  </span>
+                ) : (
+                  <span className="block text-emerald-800 font-semibold mt-0.5">
+                    Status: Tepat Waktu (Memenuhi jam kehadiran sekolah).
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className={`p-3 rounded-xl border flex items-start gap-2.5 text-xs ${
+              isEarlyCheckout ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-blue-50 border-blue-200 text-blue-900'
+            }`}>
+              <Clock className={`w-4 h-4 shrink-0 mt-0.5 ${isEarlyCheckout ? 'text-amber-600' : 'text-blue-600'}`} />
+              <div>
+                <strong className="font-bold">Sinkronisasi Jam Kepulangan: </strong>
+                Waktu kepulangan resmi SD BOPKRI Gondolayu adalah pukul <strong>{officialEndTime} WIB</strong>.
+                {isEarlyCheckout ? (
+                  <span className="block text-amber-800 font-bold mt-0.5">
+                    Perhatian: Anda melakukan presensi pulang {earlyCheckoutMinutes} menit lebih awal sebelum pukul 14:30 WIB.
+                  </span>
+                ) : (
+                  <span className="block text-blue-800 font-semibold mt-0.5">
+                    Status: Kepulangan Sesuai Jadwal Resmi (Pukul {timeStr} WIB).
+                  </span>
+                )}
               </div>
             </div>
           )}
 
-          {/* Checkout Info Banner */}
-          {mode === 'checkout' && (
-            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 flex items-start gap-2.5 text-xs text-blue-800">
-              <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-              <div>
-                <strong className="font-bold">Waktu Kepulangan Resmi: </strong>
-                Waktu kepulangan resmi adalah pukul <strong>{schoolConfig.workEndTime || '14:30'} WIB</strong>. Pastikan tugas kedinasan dan presensi selesai dengan tertib.
-              </div>
-            </div>
-          )}
-
-          {/* Distance warning if outside 100m */}
-          {!isWithinRadius && (
+          {/* Geofence Alert if GPS active but outside school boundary */}
+          {isGpsActive && !isWithinRadius && (
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-800">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <strong className="font-bold">Di Luar Titik Sekolah: </strong>
-                Sistem mendeteksi jarak Anda {Math.round(distanceMeters || 0)}m dari SD BOPKRI Gondolayu. Toleransi presensi adalah maksimal 100 meter.
+                <strong className="font-bold">Di Luar Lingkungan Sekolah: </strong>
+                Jarak Anda terdeteksi {Math.round(distanceMeters || 0)}m dari gerbang SD BOPKRI Gondolayu. Batas toleransi adalah {schoolConfig.radiusToleranceMeters} meter.
               </div>
             </div>
           )}
@@ -410,8 +529,9 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
                 <AlertCircle className="w-8 h-8 mx-auto text-rose-400" />
                 <p className="text-xs">{cameraError}</p>
                 <button
+                  type="button"
                   onClick={startCamera}
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold cursor-pointer"
                 >
                   Coba Akses Kamera Lagi
                 </button>
@@ -469,11 +589,13 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
               <button
                 type="button"
                 onClick={handleCapturePhoto}
-                disabled={isCapturing || !!cameraError}
-                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                disabled={isCapturing || !!cameraError || !isGpsActive}
+                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
               >
                 <Camera className="w-4 h-4" />
-                <span>Ambil Foto Verifikasi Wajah</span>
+                <span>
+                  {!isGpsActive ? 'Aktifkan GPS Handphone Terlebih Dahulu' : 'Ambil Foto Verifikasi Wajah'}
+                </span>
               </button>
             ) : (
               <button
@@ -482,7 +604,7 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
                 className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
-                <span>Ambil Ulang Foto</span>
+                <span>Ambil Ulang Foto Wajah</span>
               </button>
             )}
           </div>
@@ -490,50 +612,68 @@ export const AttendanceModal: React.FC<AttendanceModalProps> = ({
           {/* Notes Input */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Catatan / Keterangan Tambahan (Opsional)
+              Catatan / Keterangan Presensi (Opsional)
             </label>
             <input
               type="text"
               value={notes}
               onChange={e => setNotes(e.target.value)}
-              placeholder={isLate ? 'Contoh: Terhambat macet di jembatan Gondolayu...' : 'Contoh: Mengajar kelas 4 pagi ini...'}
+              placeholder={
+                mode === 'checkout' && isEarlyCheckout
+                  ? 'Keterangan alasan pulang lebih awal (contoh: izin tugas kedinasan luar)...'
+                  : isLate
+                  ? 'Keterangan alasan keterlambatan (contoh: jalanan macet)...'
+                  : 'Catatan tambahan...'
+              }
               className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              stopCamera();
-              onClose();
-            }}
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
-          >
-            Batal
-          </button>
+        <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2.5">
+          <div className="text-[11px] text-slate-500">
+            {isGpsActive ? (
+              <span className="text-emerald-700 font-medium flex items-center gap-1">
+                <CheckCircle className="w-3.5 h-3.5" /> GPS Aktif ({Math.round(distanceMeters || 0)}m)
+              </span>
+            ) : (
+              <span className="text-rose-600 font-semibold">GPS Belum Aktif</span>
+            )}
+          </div>
 
-          <button
-            type="button"
-            onClick={handleSubmitAttendance}
-            disabled={!capturedPhoto || !isWithinRadius || isSubmitting}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-sm transition-all cursor-pointer ${
-              !capturedPhoto || !isWithinRadius || isSubmitting
-                ? 'bg-slate-400 cursor-not-allowed opacity-60'
-                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
-            }`}
-          >
-            <CheckCircle className="w-4 h-4" />
-            <span>
-              {isSubmitting
-                ? 'Menyimpan Presensi...'
-                : mode === 'checkin'
-                ? 'Kirim Presensi Masuk'
-                : 'Kirim Presensi Pulang'}
-            </span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                stopCamera();
+                onClose();
+              }}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+            >
+              Batal
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSubmitAttendance}
+              disabled={!canSubmit}
+              className={`px-5 py-2.5 rounded-xl text-xs font-bold text-white flex items-center gap-2 shadow-sm transition-all cursor-pointer ${
+                !canSubmit
+                  ? 'bg-slate-400 cursor-not-allowed opacity-60'
+                  : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20'
+              }`}
+            >
+              <CheckCircle className="w-4 h-4" />
+              <span>
+                {isSubmitting
+                  ? 'Menyimpan Presensi...'
+                  : mode === 'checkin'
+                  ? 'Kirim Presensi Masuk'
+                  : 'Kirim Presensi Pulang'}
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -96,7 +96,16 @@ export async function fetchUsers(): Promise<UserProfile[]> {
           };
           setDoc(doc(db, 'users', u.id), u).catch(() => {});
         }
-        users.push(u);
+
+        users.push({
+          ...u,
+          id: String(u.id || d.id),
+          nip: String(u.nip || ''),
+          name: String(u.name || ''),
+          email: String(u.email || ''),
+          jobTitle: String(u.jobTitle || (u.role === 'guru' ? 'Guru' : 'Staff')),
+          phone: String(u.phone || ''),
+        });
       }
 
       localStorage.setItem(LS_USERS, JSON.stringify(users));
@@ -116,20 +125,32 @@ export async function fetchUsers(): Promise<UserProfile[]> {
   // Fallback to local storage or seed
   const stored = localStorage.getItem(LS_USERS);
   if (stored) {
-    const parsed = JSON.parse(stored) as UserProfile[];
-    const sanitized = parsed
-      .filter(
-        u =>
-          u.id !== 'user_guru_dummy' &&
-          !u.email?.includes('dummy') &&
-          !u.name?.toLowerCase().includes('uji coba')
-      )
-      .map(u =>
-        u.role === 'kepala_sekolah' && u.name.includes('Maria')
-          ? { ...u, name: 'Fransiscus Xaverius Suhari Irawan, S.E.' }
-          : u
-      );
-    return sanitized;
+    try {
+      const parsed = JSON.parse(stored) as UserProfile[];
+      const sanitized = parsed
+        .filter(
+          u =>
+            u.id !== 'user_guru_dummy' &&
+            !u.email?.includes('dummy') &&
+            !u.name?.toLowerCase().includes('uji coba')
+        )
+        .map(u => ({
+          ...u,
+          id: String(u.id),
+          nip: String(u.nip || ''),
+          name: String(
+            u.role === 'kepala_sekolah' && u.name.includes('Maria')
+              ? 'Fransiscus Xaverius Suhari Irawan, S.E.'
+              : u.name || ''
+          ),
+          email: String(u.email || ''),
+          jobTitle: String(u.jobTitle || (u.role === 'guru' ? 'Guru' : 'Staff')),
+          phone: String(u.phone || ''),
+        }));
+      return sanitized;
+    } catch {
+      // ignore
+    }
   }
   localStorage.setItem(LS_USERS, JSON.stringify(INITIAL_USERS));
   return INITIAL_USERS;
@@ -173,26 +194,46 @@ export async function saveUser(user: UserProfile): Promise<void> {
   }
 }
 
-export async function saveUsersBatch(usersToSave: UserProfile[]): Promise<void> {
-  if (usersToSave.length === 0) return;
+export async function saveUsersBatch(usersToSave: UserProfile[]): Promise<UserProfile[]> {
+  if (usersToSave.length === 0) return await fetchUsers();
   const existing = await fetchUsers();
   const map = new Map<string, UserProfile>();
   existing.forEach(u => map.set(u.id, u));
-  usersToSave.forEach(u => map.set(u.id, u));
+  usersToSave.forEach(u => {
+    map.set(u.id, {
+      ...u,
+      id: String(u.id),
+      nip: String(u.nip || ''),
+      name: String(u.name || ''),
+      email: String(u.email || ''),
+      jobTitle: String(u.jobTitle || (u.role === 'guru' ? 'Guru' : 'Staff')),
+      phone: String(u.phone || ''),
+    });
+  });
   const updated = Array.from(map.values());
   localStorage.setItem(LS_USERS, JSON.stringify(updated));
 
   // Sync to Firestore in parallel with sanitized payloads
   const promises = usersToSave.map(async u => {
     try {
-      const cleaned = cleanDocData(u);
-      await setDoc(doc(db, 'users', u.id), cleaned);
+      const sanitizedUser = {
+        ...u,
+        id: String(u.id),
+        nip: String(u.nip || ''),
+        name: String(u.name || ''),
+        email: String(u.email || ''),
+        jobTitle: String(u.jobTitle || ''),
+        phone: String(u.phone || ''),
+      };
+      const cleaned = cleanDocData(sanitizedUser);
+      await setDoc(doc(db, 'users', sanitizedUser.id), cleaned);
     } catch (err) {
       console.error(`Failed to save user ${u.name} (${u.id}) to Firestore:`, err);
     }
   });
 
   await Promise.all(promises);
+  return updated;
 }
 
 export async function removeUser(userId: string): Promise<void> {
@@ -637,6 +678,50 @@ export function subscribeToNotifications(
       },
       err => {
         handleFirestoreError(err, OperationType.GET, 'notifications', auth.currentUser);
+      }
+    );
+    return unsub;
+  } catch {
+    return () => {};
+  }
+}
+
+// Subscribe to real-time users from Firestore
+export function subscribeToUsers(
+  onUpdate: (users: UserProfile[]) => void
+): () => void {
+  try {
+    const unsub = onSnapshot(
+      collection(db, 'users'),
+      snap => {
+        if (!snap.empty) {
+          const items: UserProfile[] = [];
+          snap.forEach(d => {
+            const u = d.data() as UserProfile;
+            if (
+              d.id === 'user_guru_dummy' ||
+              u.id === 'user_guru_dummy' ||
+              u.email?.includes('dummy') ||
+              u.name?.toLowerCase().includes('uji coba')
+            ) {
+              return;
+            }
+            items.push({
+              ...u,
+              id: String(u.id || d.id),
+              nip: String(u.nip || ''),
+              name: String(u.name || ''),
+              email: String(u.email || ''),
+              jobTitle: String(u.jobTitle || (u.role === 'guru' ? 'Guru' : 'Staff')),
+              phone: String(u.phone || ''),
+            });
+          });
+          localStorage.setItem(LS_USERS, JSON.stringify(items));
+          onUpdate(items);
+        }
+      },
+      err => {
+        handleFirestoreError(err, OperationType.GET, 'users', auth.currentUser);
       }
     );
     return unsub;
