@@ -9,6 +9,7 @@ import {
   Clock,
   AlertTriangle,
   Award,
+  Printer,
 } from 'lucide-react';
 import { UserProfile, AttendanceRecord, LeaveRequest, SchoolConfig, MonthlyUserSummary } from '../types';
 import { exportMonthlyReportToPDF, exportMonthlyReportToExcel } from '../utils/exportUtils';
@@ -154,7 +155,7 @@ export const MonthlyReport: React.FC<MonthlyReportProps> = ({
   return (
     <div className="space-y-5">
       {/* Top Banner & Export Actions */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-wrap items-center justify-between gap-4 no-print">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
@@ -168,32 +169,43 @@ export const MonthlyReport: React.FC<MonthlyReportProps> = ({
             Rekapitulasi Kehadiran Bulanan Guru & Staff
           </h2>
           <p className="text-xs text-slate-500">
-            Hasil kalkulasi otomatis persentase kehadiran, rekapitulasi keterlambatan, dan izin/sakit siap ekspor.
+            Hasil kalkulasi otomatis persentase kehadiran, rekapitulasi keterlambatan, dan izin/sakit siap ekspor & cetak.
           </p>
         </div>
 
-        {/* Export Buttons */}
+        {/* Export & Print Buttons */}
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+            title="Cetak Langsung Dokumen Rekap Resmi ke Printer atau Simpan PDF"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Cetak Rekap (Print)</span>
+          </button>
+
           <button
             onClick={handleExportPDF}
             className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+            title="Download Dokumen PDF Resmi Lengkap Kop Surat dan Tanda Tangan"
           >
             <FileText className="w-4 h-4" />
-            <span>Ekspor PDF Resmi</span>
+            <span>Download PDF</span>
           </button>
 
           <button
             onClick={handleExportExcel}
             className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+            title="Download Format Spreadsheet Excel (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Ekspor Excel (.xlsx)</span>
+            <span>Download Excel</span>
           </button>
         </div>
       </div>
 
       {/* KPI Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 no-print">
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <Award className="w-6 h-6" />
@@ -231,7 +243,7 @@ export const MonthlyReport: React.FC<MonthlyReportProps> = ({
       </div>
 
       {/* Filter and Period Selection */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-wrap items-center justify-between gap-3 no-print">
         <div className="flex flex-wrap items-center gap-3">
           {/* Month Selector */}
           <div className="flex items-center gap-2">
@@ -288,8 +300,27 @@ export const MonthlyReport: React.FC<MonthlyReportProps> = ({
         </div>
       </div>
 
-      {/* Summary Table */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+      {/* Printable Area & Summary Table */}
+      <div id="printable-report" className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden p-0 sm:p-4">
+        {/* Official Print Header (Visible only when printed) */}
+        <div className="print-only mb-6 text-center">
+          <div className="text-xs font-bold tracking-widest text-slate-800 uppercase">YAYASAN BOPKRI YOGYAKARTA</div>
+          <div className="text-xl font-black text-slate-900 uppercase tracking-wide mt-0.5">
+            {schoolConfig.schoolName || 'SD BOPKRI GONDOLAYU'}
+          </div>
+          <div className="text-[10px] text-slate-600 mt-1">
+            NPSN: {schoolConfig.npsn || '20403197'} &bull; {schoolConfig.address}
+          </div>
+          <div className="border-b-2 border-slate-900 mt-2.5 mb-0.5"></div>
+          <div className="border-b border-slate-600 mb-4"></div>
+          <div className="text-sm font-extrabold text-slate-900 uppercase">
+            LAPORAN REKAPITULASI KEHADIRAN RESMI PEGAWAI (PORTAL PREBOGO)
+          </div>
+          <div className="text-xs text-slate-700 mt-0.5">
+            Periode: <strong>{MONTH_NAMES[selectedMonth]} {selectedYear}</strong> &bull; Hari Kerja: Senin – Jumat &bull; Toleransi Radius Geofence: {schoolConfig.radiusToleranceMeters} Meter
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
@@ -337,7 +368,7 @@ export const MonthlyReport: React.FC<MonthlyReportProps> = ({
                     <td className="py-3 px-3 text-center font-semibold text-rose-600">{s.absentCount}</td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <div className="w-16 bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div className="w-16 bg-slate-100 rounded-full h-2 overflow-hidden no-print">
                           <div
                             className={`h-full rounded-full ${
                               s.attendancePercentage >= 90
@@ -359,6 +390,26 @@ export const MonthlyReport: React.FC<MonthlyReportProps> = ({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Official Signatures Section (Visible only when printed) */}
+        <div className="print-only mt-10 pt-4">
+          <div className="flex justify-between items-start text-xs text-slate-900 px-6">
+            <div className="text-center w-64">
+              <div>Mengetahui,</div>
+              <div className="font-bold text-slate-800">Admin Kepegawaian & IT</div>
+              <div className="h-20"></div>
+              <div className="font-bold underline text-slate-900">( .................................................. )</div>
+              <div className="text-slate-600 mt-1">NIP. ...........................................</div>
+            </div>
+            <div className="text-center w-72">
+              <div>Yogyakarta, {new Intl.DateTimeFormat('id-ID', { dateStyle: 'long' }).format(new Date())}</div>
+              <div className="font-bold text-slate-800">Kepala SD BOPKRI Gondolayu</div>
+              <div className="h-20"></div>
+              <div className="font-bold underline text-slate-900">{schoolConfig.headmasterName || 'Fransiscus Xaverius Suhari Irawan, S.E.'}</div>
+              <div className="text-slate-600 mt-1">NIP. {schoolConfig.headmasterNip || '197204121998032004'}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

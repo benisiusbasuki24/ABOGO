@@ -68,6 +68,19 @@ try {
   // ignore
 }
 
+export const DUMMY_USER_IDS = new Set([
+  'user_guru_1',
+  'user_guru_2',
+  'user_guru_3',
+  'user_guru_4',
+  'user_guru_5',
+  'user_guru_6',
+  'user_guru_pjok',
+  'user_staff_tu',
+  'user_staff_perpus',
+  'user_guru_dummy',
+]);
+
 // ----------------- USERS -----------------
 export async function fetchUsers(): Promise<UserProfile[]> {
   try {
@@ -78,8 +91,10 @@ export async function fetchUsers(): Promise<UserProfile[]> {
         let u = d.data() as UserProfile;
         // Purge dummy test account if found in Firestore
         if (
-          d.id === 'user_guru_dummy' ||
-          u.id === 'user_guru_dummy' ||
+          DUMMY_USER_IDS.has(d.id) ||
+          DUMMY_USER_IDS.has(u.id) ||
+          d.id.includes('dummy') ||
+          u.id?.includes('dummy') ||
           u.email?.includes('dummy') ||
           u.name?.toLowerCase().includes('uji coba')
         ) {
@@ -130,7 +145,8 @@ export async function fetchUsers(): Promise<UserProfile[]> {
       const sanitized = parsed
         .filter(
           u =>
-            u.id !== 'user_guru_dummy' &&
+            !DUMMY_USER_IDS.has(u.id) &&
+            !u.id?.includes('dummy') &&
             !u.email?.includes('dummy') &&
             !u.name?.toLowerCase().includes('uji coba')
         )
@@ -284,7 +300,8 @@ export async function recordAttendance(record: AttendanceRecord): Promise<void> 
   localStorage.setItem(LS_ATTENDANCES, JSON.stringify(updated));
 
   try {
-    await setDoc(doc(db, 'attendances', record.id), record);
+    const cleaned = cleanDocData(record);
+    await setDoc(doc(db, 'attendances', record.id), cleaned);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, `attendances/${record.id}`, auth.currentUser);
   }
@@ -349,9 +366,38 @@ export async function saveSchoolConfig(config: SchoolConfig): Promise<void> {
 
 // Purge all dummy data and test accounts from Firestore and local state
 export async function purgeAllDummyData(): Promise<void> {
-  localStorage.setItem(LS_ATTENDANCES, JSON.stringify([]));
-  localStorage.setItem(LS_LEAVES, JSON.stringify([]));
-  localStorage.setItem(LS_NOTIFS, JSON.stringify([]));
+  // Purge dummy attendances from localStorage while preserving real recorded attendances
+  const localAttRaw = localStorage.getItem(LS_ATTENDANCES);
+  if (localAttRaw) {
+    try {
+      const parsed = JSON.parse(localAttRaw) as AttendanceRecord[];
+      const cleaned = parsed.filter(
+        a =>
+          !a.id.startsWith('att_dummy_') &&
+          !a.id.includes('dummy') &&
+          !a.id.includes('sample') &&
+          !a.notes?.includes('Simulasi') &&
+          !a.notes?.includes('dummy')
+      );
+      localStorage.setItem(LS_ATTENDANCES, JSON.stringify(cleaned));
+    } catch {
+      localStorage.setItem(LS_ATTENDANCES, JSON.stringify([]));
+    }
+  }
+
+  // Purge dummy leaves from localStorage
+  const localLeavesRaw = localStorage.getItem(LS_LEAVES);
+  if (localLeavesRaw) {
+    try {
+      const parsed = JSON.parse(localLeavesRaw) as LeaveRequest[];
+      const cleaned = parsed.filter(
+        l => !l.id.startsWith('leave_dummy_') && !l.id.includes('dummy') && !l.id.includes('sample')
+      );
+      localStorage.setItem(LS_LEAVES, JSON.stringify(cleaned));
+    } catch {
+      localStorage.setItem(LS_LEAVES, JSON.stringify([]));
+    }
+  }
 
   // Purge dummy user from localStorage
   const localUsersRaw = localStorage.getItem(LS_USERS);
@@ -359,7 +405,11 @@ export async function purgeAllDummyData(): Promise<void> {
     try {
       const parsed = JSON.parse(localUsersRaw) as UserProfile[];
       const cleaned = parsed.filter(
-        u => u.id !== 'user_guru_dummy' && !u.email?.includes('dummy') && !u.name?.toLowerCase().includes('uji coba')
+        u =>
+          !DUMMY_USER_IDS.has(u.id) &&
+          !u.id?.includes('dummy') &&
+          !u.email?.includes('dummy') &&
+          !u.name?.toLowerCase().includes('uji coba')
       );
       localStorage.setItem(LS_USERS, JSON.stringify(cleaned));
     } catch {
@@ -373,12 +423,13 @@ export async function purgeAllDummyData(): Promise<void> {
     for (const d of snapUsers.docs) {
       const uData = d.data() as UserProfile;
       if (
-        d.id === 'user_guru_dummy' ||
+        DUMMY_USER_IDS.has(d.id) ||
+        DUMMY_USER_IDS.has(uData.id) ||
         d.id.includes('dummy') ||
         uData.email?.includes('dummy') ||
         uData.name?.toLowerCase().includes('uji coba')
       ) {
-        await deleteDoc(doc(db, 'users', d.id));
+        await deleteDoc(doc(db, 'users', d.id)).catch(() => {});
       }
     }
 
@@ -392,7 +443,7 @@ export async function purgeAllDummyData(): Promise<void> {
         data.notes?.includes('Simulasi') ||
         data.notes?.includes('dummy')
       ) {
-        await deleteDoc(doc(db, 'attendances', d.id));
+        await deleteDoc(doc(db, 'attendances', d.id)).catch(() => {});
       }
     }
 
@@ -403,7 +454,7 @@ export async function purgeAllDummyData(): Promise<void> {
         d.id.includes('dummy') ||
         d.id.includes('sample')
       ) {
-        await deleteDoc(doc(db, 'leave_requests', d.id));
+        await deleteDoc(doc(db, 'leave_requests', d.id)).catch(() => {});
       }
     }
   } catch (err) {
@@ -699,8 +750,10 @@ export function subscribeToUsers(
           snap.forEach(d => {
             const u = d.data() as UserProfile;
             if (
-              d.id === 'user_guru_dummy' ||
-              u.id === 'user_guru_dummy' ||
+              DUMMY_USER_IDS.has(d.id) ||
+              DUMMY_USER_IDS.has(u.id) ||
+              d.id.includes('dummy') ||
+              u.id?.includes('dummy') ||
               u.email?.includes('dummy') ||
               u.name?.toLowerCase().includes('uji coba')
             ) {

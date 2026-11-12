@@ -23,7 +23,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { UserProfile, UserRole } from '../types';
-import { saveUser, saveUsersBatch, removeUser } from '../services/dbService';
+import { saveUser, saveUsersBatch, removeUser, purgeAllDummyData } from '../services/dbService';
 
 export interface ParsedUserRow {
   rowNumber: number;
@@ -680,6 +680,22 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            onClick={async () => {
+              if (confirm('Bersihkan seluruh data dummy / uji coba dari sistem PREBOGO dan Cloud Firestore? Hanya akun Administrator dan data pegawai resmi yang akan dipertahankan.')) {
+                await purgeAllDummyData();
+                onRefresh();
+                setSuccessToast('Seluruh data dummy berhasil dibersihkan dari sistem dan Cloud Firebase.');
+                setTimeout(() => setSuccessToast(null), 5000);
+              }
+            }}
+            className="px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Bersihkan Data Uji Coba / Dummy"
+          >
+            <Trash2 className="w-4 h-4 text-rose-600" />
+            <span>Bersihkan Data Uji Coba</span>
+          </button>
+
           <button
             onClick={handleOpenUploadModal}
             className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-sm shadow-emerald-600/20 transition-all cursor-pointer"

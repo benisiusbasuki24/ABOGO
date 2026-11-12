@@ -36,3 +36,62 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Official Print Styles for PREBOGO Attendance Reports */
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}
+
+@media print {
+  body {
+    background: white !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  /* Hide UI chrome, header ribbons, filters, and modal controls */
+  header, footer, nav, button, .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  @page {
+    size: A4 landscape;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+  
+  /* Ensure report table expands and prints clearly with borders */
+  #printable-report {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  
+  #printable-report table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+  
+  #printable-report th, 
+  #printable-report td {
+    border: 1px solid #64748b !important;
+    padding: 5px 6px !important;
+    font-size: 8.5pt !important;
+    color: #0f172a !important;
+  }
+  
+  #printable-report th {
+    background-color: #f1f5f9 !important;
+    font-weight: bold !important;
+  }
+}

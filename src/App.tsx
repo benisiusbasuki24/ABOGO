@@ -33,6 +33,7 @@ import { DEFAULT_SCHOOL_CONFIG } from './services/seedData';
 import {
   Camera,
   MapPin,
+  MapPinOff,
   ShieldCheck,
   Compass,
   AlertTriangle,
@@ -205,6 +206,7 @@ function AppContent() {
     ? attendances.find(a => a.userId === currentUser.id && a.date === todayStr)
     : undefined;
 
+  const isGpsActive = !!userCoords && !gpsError;
   const pendingLeavesCount = leaves.filter(l => l.status === 'pending').length;
 
   if (authLoading) {
@@ -330,14 +332,33 @@ function AppContent() {
 
             {currentUser && (
               <button
-                onClick={() => setIsAttendanceModalOpen(true)}
-                className="px-4 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-blue-600/20 transition-all cursor-pointer"
+                onClick={() => {
+                  if (!isGpsActive) {
+                    alert('GPS Belum Aktif di Perangkat: Anda wajib mengaktifkan GPS / Layanan Lokasi pada smartphone Anda untuk membuka menu presensi resmi SD BOPKRI Gondolayu.');
+                    requestRealGps();
+                    return;
+                  }
+                  setIsAttendanceModalOpen(true);
+                }}
+                disabled={!isGpsActive}
+                className={`px-4 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  isGpsActive
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm shadow-blue-600/20 cursor-pointer'
+                    : 'bg-slate-200 text-slate-500 border border-slate-300 cursor-not-allowed opacity-75'
+                }`}
+                title={!isGpsActive ? 'GPS belum aktif di smartphone Anda (Wajib aktif)' : 'Presensi Resmi SD BOPKRI Gondolayu'}
               >
-                <Camera className="w-3.5 h-3.5" />
+                {!isGpsActive ? (
+                  <MapPinOff className="w-3.5 h-3.5 text-rose-500" />
+                ) : (
+                  <Camera className="w-3.5 h-3.5" />
+                )}
                 <span>
-                  {existingTodayRecord && existingTodayRecord.checkInTime && !existingTodayRecord.checkOutTime
-                    ? 'Absen Pulang (14:30)'
-                    : 'Absen Masuk (07:00)'}
+                  {!isGpsActive
+                    ? 'GPS Wajib Aktif di HP'
+                    : existingTodayRecord && existingTodayRecord.checkInTime && !existingTodayRecord.checkOutTime
+                    ? 'Presensi Pulang (14:30)'
+                    : 'Presensi Masuk (07:00)'}
                 </span>
               </button>
             )}
@@ -352,8 +373,17 @@ function AppContent() {
               attendances={attendances}
               leaves={leaves}
               schoolConfig={schoolConfig}
-              onOpenAttendanceModal={() => setIsAttendanceModalOpen(true)}
+              onOpenAttendanceModal={() => {
+                if (!isGpsActive) {
+                  alert('GPS Belum Aktif di Perangkat: Anda wajib mengaktifkan GPS / Layanan Lokasi pada smartphone Anda untuk membuka menu presensi resmi SD BOPKRI Gondolayu.');
+                  requestRealGps();
+                  return;
+                }
+                setIsAttendanceModalOpen(true);
+              }}
               currentUser={currentUser}
+              isGpsActive={isGpsActive}
+              onRequestGps={requestRealGps}
             />
 
             {/* Embedded interactive map in dashboard for convenience */}

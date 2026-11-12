@@ -7,10 +7,12 @@ import {
   Calendar,
   Sparkles,
   MapPin,
+  MapPinOff,
   ChevronRight,
   ShieldCheck,
   Eye,
   X,
+  AlertTriangle,
 } from 'lucide-react';
 import { UserProfile, AttendanceRecord, LeaveRequest, SchoolConfig } from '../types';
 
@@ -21,6 +23,8 @@ interface DashboardAnalyticsProps {
   schoolConfig: SchoolConfig;
   onOpenAttendanceModal: () => void;
   currentUser: UserProfile;
+  isGpsActive?: boolean;
+  onRequestGps?: () => void;
 }
 
 export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
@@ -30,6 +34,8 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
   schoolConfig,
   onOpenAttendanceModal,
   currentUser,
+  isGpsActive = false,
+  onRequestGps,
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>(
     new Date().toISOString().split('T')[0]
@@ -132,22 +138,88 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                     Pulang: {myTodayRecord.checkOutTime} WIB
                   </div>
                 ) : (
-                  <button
-                    onClick={onOpenAttendanceModal}
-                    className="w-full mt-2 py-2 px-4 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs shadow-lg transition-all cursor-pointer"
-                  >
-                    Presensi Pulang (14:30)
-                  </button>
+                  <div>
+                    <button
+                      onClick={() => {
+                        if (!isGpsActive) {
+                          alert('GPS Belum Aktif di Perangkat: Anda wajib mengaktifkan GPS/Layanan Lokasi pada handphone Anda untuk melakukan presensi pulang.');
+                          onRequestGps?.();
+                          return;
+                        }
+                        onOpenAttendanceModal();
+                      }}
+                      disabled={!isGpsActive}
+                      className={`w-full mt-2 py-2 px-4 rounded-xl font-bold text-xs shadow-lg transition-all flex items-center justify-center gap-1.5 ${
+                        isGpsActive
+                          ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+                          : 'bg-slate-400/30 text-slate-300 border border-white/20 cursor-not-allowed opacity-75'
+                      }`}
+                      title={!isGpsActive ? 'GPS wajib aktif di smartphone Anda' : 'Presensi Pulang (14:30)'}
+                    >
+                      {!isGpsActive ? (
+                        <>
+                          <MapPinOff className="w-3.5 h-3.5 text-rose-300" />
+                          <span>GPS Wajib Aktif di HP</span>
+                        </>
+                      ) : (
+                        <span>Presensi Pulang (14:30)</span>
+                      )}
+                    </button>
+                    {!isGpsActive && (
+                      <button
+                        type="button"
+                        onClick={onRequestGps}
+                        className="w-full text-[10px] text-amber-200 hover:text-amber-100 font-medium mt-1.5 cursor-pointer underline flex items-center justify-center gap-1"
+                      >
+                        <AlertTriangle className="w-3 h-3 text-amber-300" />
+                        <span>Nyalakan GPS HP untuk presensi</span>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             ) : (
-              <button
-                onClick={onOpenAttendanceModal}
-                className="w-full py-2.5 px-5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-extrabold text-xs shadow-lg shadow-emerald-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Lakukan Presensi Masuk</span>
-              </button>
+              <div>
+                <button
+                  onClick={() => {
+                    if (!isGpsActive) {
+                      alert('GPS Belum Aktif di Perangkat: Anda wajib mengaktifkan GPS/Layanan Lokasi pada handphone Anda untuk melakukan presensi masuk.');
+                      onRequestGps?.();
+                      return;
+                    }
+                    onOpenAttendanceModal();
+                  }}
+                  disabled={!isGpsActive}
+                  className={`w-full py-2.5 px-5 rounded-xl font-extrabold text-xs shadow-lg transition-all flex items-center justify-center gap-2 ${
+                    isGpsActive
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-emerald-500/30 cursor-pointer'
+                      : 'bg-slate-400/30 text-slate-200 border border-white/20 cursor-not-allowed opacity-75'
+                  }`}
+                  title={!isGpsActive ? 'GPS wajib aktif di smartphone Anda' : 'Lakukan Presensi Masuk'}
+                >
+                  {!isGpsActive ? (
+                    <>
+                      <MapPinOff className="w-4 h-4 text-rose-300" />
+                      <span>GPS Wajib Aktif di HP</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Lakukan Presensi Masuk</span>
+                    </>
+                  )}
+                </button>
+                {!isGpsActive && (
+                  <button
+                    type="button"
+                    onClick={onRequestGps}
+                    className="w-full text-[10px] text-amber-200 hover:text-amber-100 font-medium mt-1.5 cursor-pointer underline flex items-center justify-center gap-1"
+                  >
+                    <AlertTriangle className="w-3 h-3 text-amber-300" />
+                    <span>Nyalakan GPS HP untuk presensi</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -431,7 +503,7 @@ export const DashboardAnalytics: React.FC<DashboardAnalyticsProps> = ({
                 <div
                   className="bg-slate-300 h-full transition-all duration-500"
                   style={{ width: `${totalEmployees > 0 ? (absentCount / totalEmployees) * 100 : 0}%` }}
-                  title="Belum Absen"
+                  title="Belum Presensi"
                 ></div>
               </div>
 
